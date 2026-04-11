@@ -176,6 +176,10 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('attendances/check-half-day', [AttendanceController::class, 'checkHalfDay'])->name('attendances.check_half_day');
     Route::resource('attendances', AttendanceController::class);
 
+    // Device Logs
+    Route::post('device-logs/sync', [\App\Http\Controllers\DeviceLogController::class, 'sync'])->name('device-logs.sync');
+    Route::resource('device-logs', \App\Http\Controllers\DeviceLogController::class);
+
     // Shifts
     Route::get('shifts/mark/{id}/{day}/{month}/{year}', [EmployeeShiftScheduleController::class, 'mark'])->name('shifts.mark');
     Route::get('shifts/export-all/{year}/{month}/{id}/{department}/{startDate}/{viewType}', [EmployeeShiftScheduleController::class, 'exportAllShift'])->name('shifts.export_all');

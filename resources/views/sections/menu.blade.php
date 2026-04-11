@@ -24,6 +24,7 @@
                 @endif
                 @if (in_array('attendance', user_modules()))
                     <x-sub-menu-item :link="route('attendances.index')" :text="__('app.menu.attendance')" />
+                    <x-sub-menu-item :link="route('device-logs.index')" text="Device Logs" />
                 @endif
                 @if (in_array('holidays', user_modules()))
                     <x-sub-menu-item :link="route('holidays.index')" :text="__('app.menu.holiday')" />
