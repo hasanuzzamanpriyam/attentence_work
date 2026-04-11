@@ -580,7 +580,7 @@
     }
 </script>
 
-@if (in_array('messages', user_modules()))
+@if (in_array('messages', user_modules()) && Route::has('messages.check_new_message'))
     <script>
         function newMessageNotificationPlay() {
             var audio = new Audio("{{ asset('message-notification.mp3') }}");
