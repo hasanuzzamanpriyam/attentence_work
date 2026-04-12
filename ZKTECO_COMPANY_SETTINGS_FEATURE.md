@@ -165,7 +165,7 @@ $port = $company->zkteco_port;
 
 **Fallback to .env (Priority 2):**
 ```php
-$ip = $company->zkteco_ip ?: env('ZKTECO_IP', '192.168.1.201');
+$ip = $company->zkteco_ip ?: env('ZKTECO_IP', '192.168.0.201');
 $port = $company->zkteco_port ?: env('ZKTECO_PORT', 4370);
 ```
 
