@@ -43,6 +43,7 @@ use App\Http\Controllers\LeaveFileController;
 use App\Http\Controllers\ModuleSettingController;
 use App\Http\Controllers\LanguageSettingController;
 use App\Http\Controllers\SignUpSettingController;
+use App\Http\Controllers\ShiftRotationController;
 
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
 
@@ -118,6 +119,13 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::get('department/search', [DepartmentController::class, 'searchDepartment'])->name('departments.search');
     Route::get('department/{id}', [DepartmentController::class, 'getMembers'])->name('departments.members');
     Route::resource('departments', DepartmentController::class);
+
+    // Shift Rotations
+    Route::post('shift-rotations/change-status', [ShiftRotationController::class, 'changeStatus'])->name('shift-rotations.change_status');
+    Route::get('shift-rotations/manage-rotation-employee/{id}', [ShiftRotationController::class, 'manageRotationEmployee'])->name('shift-rotations.manage_rotation_employee');
+    Route::get('shift-rotations/automate-shift', [ShiftRotationController::class, 'automateShift'])->name('shift-rotations.automate_shift');
+    Route::get('shift-rotations/run-rotation', [ShiftRotationController::class, 'runRotationGet'])->name('shift-rotations.run_rotation_get');
+    Route::resource('shift-rotations', ShiftRotationController::class);
 
     // User Permissions
     Route::post('user-permissions/customPermissions/{id}', [UserPermissionController::class, 'customPermissions'])->name('user-permissions.custom_permissions');
