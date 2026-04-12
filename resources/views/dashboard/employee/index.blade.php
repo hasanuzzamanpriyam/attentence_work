@@ -54,8 +54,8 @@
         {{-- Welcome Section --}}
         <div class="d-lg-flex d-md-flex d-block py-2 pb-2 align-items-center">
             <div class="">
-                <h4 class="mb-1 font-weight-normal">@lang('messages.welcomeBack') {{ user()->name }}!</h4>
-                <p class="text-muted f-14 mb-0">@lang('messages.dashboardOverview')</p>
+                <h4 class="mb-1 font-weight-normal">@lang('Welcome') {{ user()->name }}!</h4>
+                <p class="text-muted f-14 mb-0">@lang('Dashboard Overview')</p>
             </div>
         </div>
 
@@ -86,7 +86,7 @@
         {{-- Quick Actions --}}
         <div class="row mt-3">
             <div class="col-md-12">
-                <x-cards.data :title="__('app.quickActions')">
+                <x-cards.data :title="__('Quick Actions')">
                     <div class="row">
                         @if(in_array('employees', user_modules()) && user()->permission('add_employees'))
                             <div class="col-md-3 col-sm-6 mb-3">
