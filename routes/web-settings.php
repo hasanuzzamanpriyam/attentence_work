@@ -20,6 +20,9 @@ use App\Http\Controllers\SocialAuthSettingController;
 use App\Http\Controllers\NotificationSettingController;
 use App\Http\Controllers\SignUpSettingController;
 use App\Http\Controllers\LeaveSettingController;
+use App\Http\Controllers\DesignationController;
+use App\Http\Controllers\ProfileSettingController;
+use App\Http\Controllers\CustomModuleController;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function () {
@@ -101,6 +104,13 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
     // Google auth
     Route::get('google-app-connect', [GoogleAuthController::class, 'connect'])->name('google-auth.connect');
     Route::get('google-app-disconnect', [GoogleAuthController::class, 'disconnect'])->name('google-auth.disconnect');
+
+    // Designation settings
+    Route::get('designations', [DesignationController::class, 'create'])->name('settings.designations.create');
+    Route::post('designations', [DesignationController::class, 'store'])->name('settings.designations.store');
+
+    // Custom modules
+    Route::resource('custom-modules', CustomModuleController::class);
 
     // Company settings
     Route::resource('company-settings', SettingsController::class)->except(['destroy']);

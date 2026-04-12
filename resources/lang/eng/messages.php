@@ -532,6 +532,7 @@ return array(
     'signUpUrlRequired' => 'The terms link field is required when sign up terms is enabled.',
     'adminPermissionsCantChange' => 'Admin permissions can not be changed',
     'customModuleInstalled' => 'Module installed successfully. You will be redirected to the custom module page. Activate the module to use it.',
+    'customModuleInfo' => 'Upload and install custom modules to extend the functionality of your application.',
     'deal' => array(
         'deletePipeline' => 'It has :stages stages and :deals deals. The all records will be deleted permanently.',
         'deleteStage' => 'The all deals of this stage will be shifted into default stage.'
