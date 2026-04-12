@@ -1,6 +1,31 @@
 {{-- HR-Only Dashboard - Simplified version --}}
 @extends('layouts.app')
 
+@push('styles')
+<style>
+    .quick-action-btn {
+        transition: all 0.2s ease;
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 10px 16px;
+    }
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    body.dark-theme .quick-action-btn {
+        color: #c9d1d9 !important;
+        border-color: #444c56 !important;
+        background-color: #2d333b !important;
+    }
+    body.dark-theme .quick-action-btn:hover {
+        background-color: #373e47 !important;
+        border-color: #768390 !important;
+        color: #ffffff !important;
+    }
+</style>
+@endpush
+
 @section('content')
     <div class="px-4 py-2 border-top-0 emp-dashboard">
         {{-- Leave/Holiday Alerts --}}
@@ -65,29 +90,29 @@
                     <div class="row">
                         @if(in_array('employees', user_modules()) && user()->permission('add_employees'))
                             <div class="col-md-3 col-sm-6 mb-3">
-                                <a href="{{ route('employees.index') }}" class="btn btn-lighten w-100">
-                                    <i class="fa fa-user-plus"></i> @lang('app.addEmployee')
+                                <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary w-100 quick-action-btn">
+                                    <i class="fa fa-user-plus mr-1"></i> @lang('app.addEmployee')
                                 </a>
                             </div>
                         @endif
                         @if(in_array('attendance', user_modules()))
                             <div class="col-md-3 col-sm-6 mb-3">
-                                <a href="{{ route('attendances.index') }}" class="btn btn-lighten w-100">
-                                    <i class="fa fa-clock"></i> @lang('app.menu.attendance')
+                                <a href="{{ route('attendances.index') }}" class="btn btn-outline-secondary w-100 quick-action-btn">
+                                    <i class="fa fa-clock mr-1"></i> @lang('app.menu.attendance')
                                 </a>
                             </div>
                         @endif
                         @if(in_array('leaves', user_modules()))
                             <div class="col-md-3 col-sm-6 mb-3">
-                                <a href="{{ route('leaves.index') }}" class="btn btn-lighten w-100">
-                                    <i class="fa fa-calendar-minus"></i> @lang('app.menu.leaves')
+                                <a href="{{ route('leaves.index') }}" class="btn btn-outline-secondary w-100 quick-action-btn">
+                                    <i class="fa fa-calendar-minus mr-1"></i> @lang('app.menu.leaves')
                                 </a>
                             </div>
                         @endif
                         @if(in_array('holidays', user_modules()))
                             <div class="col-md-3 col-sm-6 mb-3">
-                                <a href="{{ route('holidays.index') }}" class="btn btn-lighten w-100">
-                                    <i class="fa fa-umbrella-beach"></i> @lang('app.menu.holiday')
+                                <a href="{{ route('holidays.index') }}" class="btn btn-outline-secondary w-100 quick-action-btn">
+                                    <i class="fa fa-umbrella-beach mr-1"></i> @lang('app.menu.holiday')
                                 </a>
                             </div>
                         @endif

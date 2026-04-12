@@ -111,11 +111,11 @@
         <button class="border-0 d-lg-block d-none text-lightest font-weight-bold" id="sidebarToggle"></button>
 
         @if (in_array('admin', user_roles()))
-            <button  type="button" class="btn px-2 py-1 btn-primary btn-sm f-10 pull-left" data-toggle="modal" data-target="#raiseSupportTicketModal">
+            <button type="button" class="btn px-2 py-1 {{ user()->dark_theme ? 'btn-outline-light' : 'btn-primary' }} btn-sm f-10 pull-left" data-toggle="modal" data-target="#raiseSupportTicketModal">
                 Raise Support Ticket
             </button>
         @endif
-        <p class="mb-0 text-dark-grey px-1 py-0 rounded f-10">v{{ \Illuminate\Support\Facades\File::get('version.txt') }}</p>
+        <p class="mb-0 {{ user()->dark_theme ? 'text-light' : 'text-dark-grey' }} px-1 py-0 rounded f-10">v{{ \Illuminate\Support\Facades\File::get('version.txt') }}</p>
     </div>
     <!-- Sidebar Toggler -->
 

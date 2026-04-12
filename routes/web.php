@@ -39,6 +39,7 @@ use App\Http\Controllers\SecuritySettingController;
 use App\Http\Controllers\SocialAuthSettingController;
 use App\Http\Controllers\NotificationSettingController;
 use App\Http\Controllers\LeaveTypeController;
+use App\Http\Controllers\LeaveFileController;
 use App\Http\Controllers\ModuleSettingController;
 use App\Http\Controllers\LanguageSettingController;
 use App\Http\Controllers\SignUpSettingController;
@@ -146,6 +147,10 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::get('leaves/view-related-leave/{id}', [LeaveController::class, 'viewRelatedLeave'])->name('leaves.view_related_leave');
     Route::get('leaves/export-all-leave', [LeaveController::class, 'exportAllLeaves'])->name('leaves.export_all_leave');
     Route::resource('leaves', LeaveController::class);
+
+    // Leave Files
+    Route::get('leave-files/download/{id}', [LeaveFileController::class, 'download'])->name('leave-files.download');
+    Route::resource('leave-files', LeaveFileController::class);
 
     // Appreciations
     Route::post('appreciations/apply-quick-action', [AppreciationController::class, 'applyQuickAction'])->name('appreciations.apply_quick_action');

@@ -105,7 +105,6 @@ $viewFinanceDashboard = user()->permission('view_finance_dashboard');
                     </x-form>
                 </div>
             @endif
-
         </div>
 
         <a class="mb-0 d-block d-lg-none text-dark-grey mr-2 border-left-grey border-bottom-0"
