@@ -181,9 +181,10 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('attendances/check-half-day', [AttendanceController::class, 'checkHalfDay'])->name('attendances.check_half_day');
     Route::resource('attendances', AttendanceController::class);
 
-    // Device Logs
+    // Device Logs - Define sync route BEFORE resource route to avoid conflicts
     Route::post('device-logs/sync', [\App\Http\Controllers\DeviceLogController::class, 'sync'])->name('device-logs.sync');
-    Route::resource('device-logs', \App\Http\Controllers\DeviceLogController::class);
+    Route::get('device-logs/status', [\App\Http\Controllers\DeviceLogController::class, 'checkDeviceStatus'])->name('device-logs.status');
+    Route::resource('device-logs', \App\Http\Controllers\DeviceLogController::class)->except(['sync']);
 
     // Shifts
     Route::get('shifts/mark/{id}/{day}/{month}/{year}', [EmployeeShiftScheduleController::class, 'mark'])->name('shifts.mark');
@@ -230,7 +231,6 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     // QR Code Login
     Route::get('check-qr-login/{hash}', [AttendanceController::class, 'qrClockInOut'])->name('settings.qr-login');
     Route::post('change-qr-code-status', [AttendanceController::class, 'qrCodeStatus'])->name('settings.change-qr-code-status');
-
 });
 
 // Settings routes (from web-settings.php)
@@ -289,7 +289,6 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
 
     // Sign up settings
     Route::resource('sign-up-settings', SignUpSettingController::class)->only(['index', 'update']);
-
 });
 
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {

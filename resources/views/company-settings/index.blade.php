@@ -52,6 +52,45 @@
                     </div>
                 </div>
 
+                <!-- ZKTeco Device Settings -->
+                <div class="row mt-4">
+                    <div class="col-lg-12">
+                        <h5 class="f-16 font-weight-bold mb-3 border-bottom pb-2">
+                            @lang('Biometric Device Settings (ZKTeco)')
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-6">
+                        <x-forms.text class="mr-0 mr-lg-2 mr-md-2"
+                                      :fieldLabel="__('modules.accountSettings.zktecoIp')"
+                                      fieldPlaceholder="e.g., 192.168.0.201" fieldRequired="false"
+                                      fieldName="zkteco_ip"
+                                      fieldId="zkteco_ip" :fieldValue="company()->zkteco_ip"
+                                      popover="Enter the IP address of your ZKTeco biometric device"/>
+                    </div>
+                    <div class="col-lg-6">
+                        <x-forms.text class="mr-0 mr-lg-2 mr-md-2"
+                                      :fieldLabel="__('modules.accountSettings.zktecoPort')"
+                                      fieldPlaceholder="e.g., 4370" fieldRequired="false"
+                                      fieldName="zkteco_port"
+                                      fieldId="zkteco_port" :fieldValue="company()->zkteco_port"
+                                      popover="Enter the port number of your ZKTeco device (default: 4370)"/>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-lg-12">
+                        <div class="alert alert-info py-2 small">
+                            <i class="fa fa-info-circle mr-1"></i>
+                            <strong>Tip:</strong> After configuring the device IP and port, go to 
+                            <a href="{{ route('device-logs.index') }}" class="font-weight-bold">Device Logs</a> 
+                            page to sync attendance data from your biometric device.
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <x-slot name="action">

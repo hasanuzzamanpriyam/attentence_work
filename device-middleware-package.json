@@ -1,0 +1,26 @@
+{
+  "name": "worksuite-device-middleware",
+  "version": "1.0.0",
+  "description": "Device middleware service for ZKTeco biometric devices",
+  "main": "device-middleware.js",
+  "scripts": {
+    "start": "node device-middleware.js",
+    "dev": "nodemon device-middleware.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "keywords": [
+    "zkteco",
+    "biometric",
+    "device",
+    "middleware",
+    "attendance"
+  ],
+  "author": "Worksuite",
+  "license": "MIT"
+}

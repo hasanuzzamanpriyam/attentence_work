@@ -16,49 +16,95 @@ class SyncZktecoLogs extends Command
 
     public function handle()
     {
-        $ip = env('ZKTECO_IP', '192.168.1.201');
-        $port = env('ZKTECO_PORT', 4370);
+        // Get device IP and port from company settings, fallback to .env
+        $company = company();
+        $ip = $company->zkteco_ip ?: env('ZKTECO_IP', '192.168.1.201');
+        $port = $company->zkteco_port ?: env('ZKTECO_PORT', 4370);
 
         try {
-            if (class_exists(\Rats\Zkteco\Lib\ZKTeco::class)) {
-                $zk = new \Rats\Zkteco\Lib\ZKTeco($ip, $port);
-                $zk->connect();
-                $zk->enableDevice();
-
-                $logs = $zk->getAttendance();
-                $count = 0;
-
-                foreach ($logs as $log) {
-                    // Check if already exists to prevent duplicate
-                    $exists = \App\Models\AttendanceRawLog::where('device_id', $log['uid'])
-                        ->where('timestamp', $log['timestamp'])
-                        ->exists();
-
-                    if (!$exists) {
-                        // Find user mapping
-                        $user = \App\Models\User::where('device_user_id', $log['id'])->first();
-
-                        if ($user) {
-                            \App\Models\AttendanceRawLog::create([
-                                'user_id' => $user->id,
-                                'device_id' => $log['uid'],
-                                'timestamp' => $log['timestamp'],
-                                'type' => $log['type']
-                            ]);
-                            $count++;
-                        }
-                    }
-                }
-
-                $zk->clearAttendance(); 
-                $zk->disconnect();
-
-                $this->info("Synced {$count} new records from device.");
-            } else {
+            if (!class_exists(\Rats\Zkteco\Lib\ZKTeco::class)) {
                 $this->error("Library rats/zkteco not found. Please install via composer.");
+                return 1;
             }
+
+            $this->info("Testing connectivity to ZKTeco device at {$ip}:{$port}...");
+
+            // Test if device is reachable with timeout
+            $connection = @fsockopen($ip, $port, $errno, $errstr, 5);
+            if (!$connection) {
+                $this->error("Cannot connect to device: {$errstr} (Error: {$errno})");
+                $this->error("Please check: 1) Device is powered on, 2) IP address is correct, 3) Network connectivity");
+                return 1;
+            }
+            fclose($connection);
+
+            $this->info("Device is reachable. Attempting to connect...");
+
+            $zk = new \Rats\Zkteco\Lib\ZKTeco($ip, $port);
+            $connectResult = $zk->connect();
+            
+            if (!$connectResult) {
+                $this->error("Failed to establish connection with device.");
+                return 1;
+            }
+
+            $zk->enableDevice();
+
+            $this->info("Connected successfully. Retrieving attendance logs...");
+
+            $logs = $zk->getAttendance();
+            $count = 0;
+            $mappedCount = 0;
+            $unmappedCount = 0;
+
+            foreach ($logs as $log) {
+                // Check if already exists to prevent duplicate
+                $exists = \App\Models\AttendanceRawLog::where('device_id', $log['uid'])
+                    ->where('timestamp', $log['timestamp'])
+                    ->exists();
+
+                if (!$exists) {
+                    // Find user mapping
+                    $user = \App\Models\User::where('device_user_id', $log['id'])->first();
+
+                    if ($user) {
+                        $mappedCount++;
+                    } else {
+                        $unmappedCount++;
+                        $this->warn("Unmapped device user ID: {$log['id']} - Please map this user in the system");
+                    }
+
+                    \App\Models\AttendanceRawLog::create([
+                        'user_id' => $user ? $user->id : null,
+                        'device_id' => $log['uid'],
+                        'timestamp' => $log['timestamp'],
+                        'type' => $log['type']
+                    ]);
+
+                    $count++;
+                }
+            }
+
+            $zk->clearAttendance();
+            $zk->disconnect();
+
+            $this->info("Synced {$count} new records from device ({$mappedCount} mapped, {$unmappedCount} unmapped).");
+
+            // Process the raw logs to create attendance records
+            if ($count > 0) {
+                $this->info("Processing attendance records...");
+                $attendanceService = new \App\Services\AttendanceService();
+                $attendanceService->processAttendanceLogs();
+                $this->info("Attendance processing completed successfully.");
+            } else {
+                $this->info("No new records to process.");
+            }
+
+            return 0;
         } catch (\Exception $e) {
             $this->error("Failed to connect to ZKTeco: " . $e->getMessage());
+            $this->error("Stack trace: " . $e->getTraceAsString());
+            return 1;
         }
     }
 }

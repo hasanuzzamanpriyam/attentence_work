@@ -807,6 +807,8 @@ return array(
         'companyEmail' => 'Company Email',
         'companyPhone' => 'Company Phone',
         'companyWebsite' => 'Company Website',
+        'zktecoIp' => 'ZKTeco Device IP',
+        'zktecoPort' => 'ZKTeco Device Port',
         'companyLogo' => 'Company Logo',
         'darkCompanyLogo' => 'Dark Mode Logo',
         'lightCompanyLogo' => 'Light Mode Logo',

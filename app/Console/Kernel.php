@@ -36,7 +36,7 @@ use App\Console\Commands\AutoClockOut;
 use App\Console\Commands\UpdateProjectProgressByDeadline;
 use App\Console\Commands\SendEmployeeDocumentExpiryAlert;
 use App\Console\Commands\SendImmigrationExpiryAlert;
-use DateTimeZone;
+use App\Console\Commands\SyncZktecoLogs;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -85,6 +85,7 @@ class Kernel extends ConsoleKernel
         UpdateProjectProgressByDeadline::class,
         SendEmployeeDocumentExpiryAlert::class,
         SendImmigrationExpiryAlert::class,
+        SyncZktecoLogs::class,
     ];
 
     /**
@@ -94,7 +95,6 @@ class Kernel extends ConsoleKernel
     {
         // Get the timezone from the configuration
         return config('app.cron_timezone');
-
     }
 
     // Cache for schedule commands to be array. Such that it do not conflict with application cache
@@ -125,6 +125,7 @@ class Kernel extends ConsoleKernel
         // $schedule->command('fetch-ticket-emails')->everyMinute(); // phpcs:ignore
         $schedule->command('send-auto-followup-reminder')->everyMinute();
         $schedule->command('send-time-tracker')->everyMinute();
+        $schedule->command('zkteco:sync')->everyMinute();
 
         // Daily added different time to reduce server load
         $schedule->command('projects-update-deadline-progress')->dailyAt('01:00');
@@ -172,5 +173,4 @@ class Kernel extends ConsoleKernel
     {
         $this->load(__DIR__ . '/Commands');
     }
-
 }

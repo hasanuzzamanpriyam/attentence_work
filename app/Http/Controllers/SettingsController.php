@@ -39,6 +39,8 @@ class SettingsController extends AccountBaseController
         $setting->company_email = $request->company_email;
         $setting->company_phone = $request->company_phone;
         $setting->website = $request->website;
+        $setting->zkteco_ip = $request->zkteco_ip;
+        $setting->zkteco_port = $request->zkteco_port ?: 4370;
         $setting->save();
 
         return Reply::success(__('messages.updateSuccess'));

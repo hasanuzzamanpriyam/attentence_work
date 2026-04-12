@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(type *)",
-      "Bash(php *)"
+      "Bash(php *)",
+      "WebFetch(github.com)",
+      "WebFetch(raw.githubusercontent.com)"
     ]
   },
   "$version": 3
