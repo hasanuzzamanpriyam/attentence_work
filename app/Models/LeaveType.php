@@ -182,24 +182,24 @@ class LeaveType extends BaseModel
                 || $leave->allowed_notice == 1
             )
             && (
-                !is_null($leave->gender)
-                && in_array($user->gender, json_decode($leave->gender))
+                is_null($leave->gender)
+                || in_array($user->gender, json_decode($leave->gender))
             )
             && (
-                !is_null($leave->marital_status)
-                && in_array($user->employeeDetail->marital_status?->value, json_decode($leave->marital_status))
+                is_null($leave->marital_status)
+                || in_array($user->employeeDetail->marital_status?->value, json_decode($leave->marital_status))
             )
             && (
-                !is_null($leave->department)
-                && in_array($user->employeeDetail->department?->id, json_decode($leave->department))
+                is_null($leave->department)
+                || in_array($user->employeeDetail->department?->id, json_decode($leave->department))
             )
             && (
-                !is_null($leave->designation)
-                && in_array($user->employeeDetail->designation?->id, json_decode($leave->designation))
+                is_null($leave->designation)
+                || in_array($user->employeeDetail->designation?->id, json_decode($leave->designation))
             )
             && (
-                !is_null($leave->role)
-                && !empty(array_intersect($userRole, json_decode($leaveRole)))
+                is_null($leave->role)
+                || !empty(array_intersect($userRole, json_decode($leaveRole)))
             )
             && (
                 is_null($leave->effective_after)

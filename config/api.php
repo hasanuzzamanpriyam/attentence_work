@@ -8,7 +8,7 @@ return [
     'defaultLimit' => 10,
 
     /**
-     * Maximum number of records to return in single request. This limit is used
+     * Maximum number of records to return in single request
      * when user enters large number in limit parameter of the request
      */
     'maxLimit' => 1000,
