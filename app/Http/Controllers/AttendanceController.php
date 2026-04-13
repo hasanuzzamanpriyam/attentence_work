@@ -58,19 +58,26 @@ class AttendanceController extends AccountBaseController
     {
         $attendance = Attendance::find($request->employee_id);
 
-        if ($request->employee_id) {
+        if ($request->employee_id && $request->employee_id != 'all') {
+        $attendance = Attendance::where('user_id', $request->employee_id)->first();
+        
+        if ($attendance) {
             abort_403(!(
                 $this->viewAttendancePermission == 'all'
                 || ($this->viewAttendancePermission == 'added' && $attendance->added_by == user()->id)
                 || ($this->viewAttendancePermission == 'owned' && $attendance->user_id == user()->id)
-                || ($this->viewAttendancePermission == 'both' && ($attendance->added_by == user()->id || $attendance->user_id == user()->id))));
-        } else {
-            abort_403(!in_array($this->viewAttendancePermission, ['all', 'added', 'owned', 'both']));
+                || ($this->viewAttendancePermission == 'both' && ($attendance->added_by == user()->id || $attendance->user_id == user()->id))
+            ));
         }
+    } else {
+        // Basic check for general access
+        abort_403(!in_array($this->viewAttendancePermission, ['all', 'added', 'owned', 'both']));
+    }
 
-        if (request()->ajax()) {
-            return $this->summaryData($request);
-        }
+    if (request()->ajax()) {
+        // Ensure summaryData returns a 'data' key since your JS uses response.data
+        return $this->summaryData($request);
+    }
 
         if ($this->viewAttendancePermission == 'owned') {
             $this->employees = User::where('id', user()->id)->get();
