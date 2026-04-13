@@ -51,7 +51,6 @@ use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\Mailer\Exception\TransportException;
 use App\Models\CompanyAddress;
 use App\Models\Promotion;
 use App\Models\ShiftRotation;
@@ -293,11 +292,6 @@ class EmployeeController extends AccountBaseController
             // Commit Transaction
             DB::commit();
 
-        } catch (TransportException $e) {
-            // Rollback Transaction
-            DB::rollback();
-
-            return Reply::error('Please configure SMTP details to add employee. Visit Settings -> notification setting to set smtp ' . $e->getMessage(), 'smtp_error');
         } catch (\Exception $e) {
             logger($e->getMessage());
             // Rollback Transaction

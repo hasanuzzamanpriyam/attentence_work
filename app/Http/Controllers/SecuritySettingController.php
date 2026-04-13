@@ -4,10 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helper\Reply;
 use App\Http\Requests\GoogleCaptcha\UpdateGoogleCaptchaSetting;
-use App\Models\Company;
 use App\Models\GlobalSetting;
-use App\Models\SmtpSetting;
-use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 
 class SecuritySettingController extends AccountBaseController
@@ -32,10 +29,9 @@ class SecuritySettingController extends AccountBaseController
     {
 
         $this->user = user();
-        $this->smtpSetting = smtp_setting();
         $this->setting = company();
 
-        $this->view = 'security-settings.ajax.google-recaptcha';
+        $this->view = 'security-settings.ajax.two-factor-authentication';
 
         $tab = request('tab');
 

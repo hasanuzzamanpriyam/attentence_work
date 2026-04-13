@@ -2216,6 +2216,8 @@ return array(
         'verifySmtp' => 'Email SMTP settings not configured.',
         'both' => 'Both',
         'validate2FA' => 'Validate 2FA',
+        'email2faDisabledNotice' => 'Email-based 2FA has been disabled in this installation. Please use Google Authenticator app for secure authentication.',
+        'email2faDisabledInfo' => 'Email-based two-factor authentication is not available in this installation. Please enable Google Authenticator instead for enhanced security.',
     ),
     'import' => array(
         'file' => 'Upload File (file must be a file of type: xls, xlsx, csv)',

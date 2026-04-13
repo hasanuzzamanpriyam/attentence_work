@@ -14,24 +14,9 @@
                 @lang('modules.twofactor.twoFaInfo')
             </x-alert>
 
-            @if ($smtpSetting->mail_driver == 'smtp' && !$smtpSetting->verified)
-                <x-alert type="danger">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <i class="fa fa-info-circle"></i> @lang('modules.twofactor.verifySmtp')
-                        </div>
-
-                        @if (user()->permission('manage_notification_setting') == 'all')
-                            <div>
-                                <x-forms.link-primary :link="route('notifications.index')">
-                                    @lang('app.verify')
-                                </x-forms.link-primary>
-                            </div>
-                        @endif
-                    </div>
-
-                </x-alert>
-            @endif
+            <x-alert type="warning" icon="info-circle">
+                <strong>@lang('app.note'):</strong> @lang('modules.twofactor.email2faDisabledNotice')
+            </x-alert>
 
             <div class="row">
 
@@ -43,26 +28,9 @@
                             </div>
                             <div class="col-md-11">
                                 <h6>@lang('modules.twofactor.setupEmail')
-                                    @if (($user->two_fa_verify_via == 'email' || $user->two_fa_verify_via == 'both') && $user->two_factor_email_confirmed)
-                                        <span class="badge badge-success ml-2">@lang('app.active')</span>
-                                    @endif
-
+                                    <span class="badge badge-secondary ml-2">@lang('app.disabled')</span>
                                 </h6>
-                                <p class="mb-4 mt-2 f-14 text-dark-grey">@lang('messages.enable2FAUsingEmail', ['email'
-                                    =>
-                                    user()->email])</p>
-                                @if (($smtpSetting->mail_driver == 'smtp' && $smtpSetting->verified) || $smtpSetting->mail_driver == 'mail')
-                                    @if (($user->two_fa_verify_via == 'email' || $user->two_fa_verify_via == 'both') && $user->two_factor_email_confirmed)
-                                        <x-forms.button-secondary class="change-2fa-status" data-method="email"
-                                            data-status="disable">
-                                            @lang('app.disable')
-                                        </x-forms.button-secondary>
-                                    @else
-                                        <x-forms.button-primary class="validate-email-2fa">
-                                            @lang('app.enable')
-                                        </x-forms.button-primary>
-                                    @endif
-                                @endif
+                                <p class="mb-4 mt-2 f-14 text-dark-grey">@lang('modules.twofactor.email2faDisabledInfo')</p>
                             </div>
                         </div>
                     </div>

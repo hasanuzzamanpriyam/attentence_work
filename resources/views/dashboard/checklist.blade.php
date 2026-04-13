@@ -20,23 +20,7 @@
                     <x-cards.onboarding-item :title="__('modules.checklist.accountSetup')"
                                              :summary="__('modules.checklist.accountSetupInfo')" completed="true"/>
 
-                    @php
-                        $emailSetupTitle = __('modules.checklist.emailSetup') . ' <i class="fa fa-exclamation-circle text-danger ms-1" data-toggle="tooltip" data-placement="top" title="Very Important!"></i>';
-                        $emailCompleted = smtp_setting()->mail_from_email != 'from@email.com' || (smtp_setting()->verified == 1 && smtp_setting()->mail_driver != 'mail');
-                    @endphp
-                    <div class="email-setup-container position-relative mb-2">
-                        @if(!$emailCompleted)
-                            <div class="priority-badge position-absolute" style="top: -10px; right: -10px; background-color: #dc3545; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10;">
-                                <i class="fa fa-bolt"></i> Priority
-                            </div>
-                            <div class="pulse-animation position-absolute" style="top: 0; left: 0; right: 0; bottom: 0; border: 2px solid #dc3545; border-radius: 6px; z-index: 1; pointer-events: none;"></div>
-                        @endif
-                        <x-cards.onboarding-item :title="$emailSetupTitle"
-                                                :summary="__('modules.checklist.configureEmailSetting')"
-                                                :completed="$emailCompleted"
-                                                :link="route('notifications.index')"
-                                                class="email-setup-highlight"/>
-                    </div>
+                    {{-- Email setup disabled - SMTP removed --}}
 
                     <x-cards.onboarding-item :title="__('modules.checklist.crontSetup')"
                                              :summary="__('modules.checklist.cronSetupInfo')"
