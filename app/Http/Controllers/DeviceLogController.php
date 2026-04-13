@@ -211,8 +211,8 @@ class DeviceLogController extends AccountBaseController
     {
         // Get device IP and port from company settings, fallback to .env
         $company = company();
-        $ip = $company->zkteco_ip ?: env('ZKTECO_IP', '192.168.1.201');
-        $port = $company->zkteco_port ?: env('ZKTECO_PORT', 4370);
+        $ip = $company->zkteco_ip ?? env('ZKTECO_IP', '192.168.0.201');
+        $port = $company->zkteco_port ?? env('ZKTECO_PORT', 4370);
 
         $status = [
             'connected' => false,

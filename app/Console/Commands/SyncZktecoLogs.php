@@ -18,8 +18,8 @@ class SyncZktecoLogs extends Command
     {
         // Get device IP and port from company settings, fallback to .env
         $company = company();
-        $ip = $company->zkteco_ip ?: env('ZKTECO_IP', '192.168.0.201');
-        $port = $company->zkteco_port ?: env('ZKTECO_PORT', 4370);
+        $ip = $company->zkteco_ip ?? env('ZKTECO_IP', '192.168.0.201');
+        $port = $company->zkteco_port ?? env('ZKTECO_PORT', 4370);
 
         try {
             if (!class_exists(\Rats\Zkteco\Lib\ZKTeco::class)) {
@@ -42,7 +42,7 @@ class SyncZktecoLogs extends Command
 
             $zk = new \Rats\Zkteco\Lib\ZKTeco($ip, $port);
             $connectResult = $zk->connect();
-            
+
             if (!$connectResult) {
                 $this->error("Failed to establish connection with device.");
                 return 1;
@@ -51,6 +51,94 @@ class SyncZktecoLogs extends Command
             $zk->enableDevice();
 
             $this->info("Connected successfully. Retrieving attendance logs...");
+            
+            // AUTO-MAPPING: Get all enrolled users from device and create/map system users
+            $this->info("Syncing enrolled users from device...");
+            $deviceUsers = $zk->getUser();
+            $this->info("Found " . count($deviceUsers) . " enrolled users on device.");
+            
+            // DEBUG: Show what the device returned for users
+            if (!empty($deviceUsers)) {
+                $this->info("Device user data structure:");
+                foreach ($deviceUsers as $idx => $du) {
+                    $this->info("  User {$idx}: " . json_encode($du));
+                }
+            }
+            
+            $autoMappedCount = 0;
+            $autoCreatedCount = 0;
+            
+            foreach ($deviceUsers as $deviceUser) {
+                // The getUser() returns array with keys: userid, name, cardno, uid, role, password
+                $deviceUid = $deviceUser['uid'] ?? null;
+                $deviceId = $deviceUser['userid'] ?? '';
+                $deviceUserName = $deviceUser['name'] ?? '';
+                
+                if (!$deviceUid && !$deviceId) {
+                    $this->warn("  ⚠ Skipping user with no UID or ID: " . json_encode($deviceUser));
+                    continue;
+                }
+                
+                // Use uid if available, fallback to userid
+                $lookupId = $deviceUid ?: $deviceId;
+                
+                $this->info("  Processing: UID={$deviceUid}, ID={$deviceId}, Name={$deviceUserName}");
+                
+                // Try to find existing user by device_user_id (using UID first)
+                $user = \App\Models\User::withoutGlobalScopes()
+                    ->where(function($q) use ($deviceUid, $deviceId) {
+                        if ($deviceUid) {
+                            $q->orWhere('device_user_id', (string)$deviceUid);
+                        }
+                        if ($deviceId) {
+                            $q->orWhere('device_user_id', (string)$deviceId);
+                        }
+                    })
+                    ->first();
+                
+                // If not found, try to match by name (case-insensitive)
+                if (!$user && !empty($deviceUserName)) {
+                    $user = \App\Models\User::withoutGlobalScopes()
+                        ->whereRaw('LOWER(name) = ?', [strtolower($deviceUserName)])
+                        ->first();
+                    
+                    // If found by name, update their device_user_id
+                    if ($user) {
+                        $user->update(['device_user_id' => (string)$lookupId]);
+                        $this->info("  ✓ Mapped existing user '{$user->name}' to device UID: {$lookupId}");
+                        $autoMappedCount++;
+                    }
+                }
+                
+                // If still not found, create a new user automatically
+                if (!$user) {
+                    $userName = !empty($deviceUserName) ? $deviceUserName : "Device User {$lookupId}";
+                    $userEmail = !empty($deviceId) ? "device_{$deviceId}@sync.local" : "device_uid_{$lookupId}@sync.local";
+                    
+                    // Check if email already exists
+                    $existingEmail = \App\Models\User::withoutGlobalScopes()->where('email', $userEmail)->first();
+                    if ($existingEmail) {
+                        $userEmail = "device_{$lookupId}_" . time() . "@sync.local";
+                    }
+                    
+                    $user = \App\Models\User::create([
+                        'name' => $userName,
+                        'email' => $userEmail,
+                        'password' => bcrypt(\Str::random(16)),
+                        'device_user_id' => (string)$lookupId,
+                        'status' => 'active',
+                        'locale' => 'en',
+                        'login' => 'enable',
+                        'email_notifications' => 0,
+                    ]);
+                    
+                    $this->info("  ✓ Auto-created user '{$userName}' (UID: {$lookupId})");
+                    $autoCreatedCount++;
+                }
+            }
+            
+            $this->info("Auto-mapping complete: {$autoMappedCount} existing users mapped, {$autoCreatedCount} new users created.");
+            $this->line("");
 
             $logs = $zk->getAttendance();
             $count = 0;
@@ -95,15 +183,34 @@ class SyncZktecoLogs extends Command
                     ->exists();
 
                 if (!$exists) {
-                    // Find user mapping
-                    $user = \App\Models\User::where('device_user_id', $log['id'])->first();
-
-                    if ($user) {
-                        $mappedCount++;
-                    } else {
-                        $unmappedCount++;
-                        $this->warn("Unmapped device user ID: {$log['id']} - Please map this user in the system");
+                    // Try to find user mapping - UID takes precedence
+                    $user = \App\Models\User::where('device_user_id', (string)$log['uid'])->first();
+                    
+                    // If not found by UID, try enrolled ID
+                    if (!$user) {
+                        $user = \App\Models\User::where('device_user_id', $log['id'])->first();
                     }
+                    
+                    // If still not found, auto-create user (fallback)
+                    if (!$user) {
+                        $userName = "Device User {$log['uid']}";
+                        $userEmail = "device_uid_{$log['uid']}@auto.local";
+                        
+                        $user = \App\Models\User::create([
+                            'name' => $userName,
+                            'email' => $userEmail,
+                            'password' => bcrypt(\Str::random(16)),
+                            'device_user_id' => (string)$log['uid'],
+                            'status' => 'active',
+                            'locale' => 'en',
+                            'login' => 'enable',
+                            'email_notifications' => 0,
+                        ]);
+                        
+                        $this->info("  ✓ Auto-created user from attendance log: '{$userName}'");
+                    }
+
+                    $mappedCount++;
 
                     \App\Models\AttendanceRawLog::create([
                         'user_id' => $user ? $user->id : null,
