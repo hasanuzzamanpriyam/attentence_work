@@ -32,7 +32,6 @@ use App\Http\Controllers\EmployeeShiftScheduleController;
 use App\Http\Controllers\EmployeeShiftChangeRequestController;
 use App\Http\Controllers\ProfileSettingController;
 use App\Http\Controllers\TwoFASettingController;
-use App\Http\Controllers\SmtpSettingController;
 use App\Http\Controllers\ThemeSettingController;
 use App\Http\Controllers\StorageSettingController;
 use App\Http\Controllers\SecuritySettingController;
@@ -192,6 +191,8 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     // Device Logs - Define sync route BEFORE resource route to avoid conflicts
     Route::post('device-logs/sync', [\App\Http\Controllers\DeviceLogController::class, 'sync'])->name('device-logs.sync');
     Route::get('device-logs/status', [\App\Http\Controllers\DeviceLogController::class, 'checkDeviceStatus'])->name('device-logs.status');
+    Route::get('device-logs/latest', [\App\Http\Controllers\DeviceLogController::class, 'getLatestPunch'])->name('device-logs.latest');
+    Route::get('device-logs/user/{userId}', [\App\Http\Controllers\DeviceLogController::class, 'getUserDetail'])->name('device-logs.user-detail');
     Route::resource('device-logs', \App\Http\Controllers\DeviceLogController::class)->except(['sync']);
 
     // Shifts
@@ -255,11 +256,6 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
     Route::get('2fa-email-confirm', [TwoFASettingController::class, 'showEmailConfirm'])->name('two-fa-settings.validate_email_confirm');
     Route::post('2fa-email-confirm', [TwoFASettingController::class, 'emailConfirm'])->name('two-fa-settings.email_confirm');
     Route::resource('two-fa-settings', TwoFASettingController::class);
-
-    // SMTP settings
-    Route::get('smtp-settings/show-send-test-mail-modal', [SmtpSettingController::class, 'showTestEmailModal'])->name('smtp_settings.show_send_test_mail_modal');
-    Route::get('smtp-settings/send-test-mail', [SmtpSettingController::class, 'sendTestEmail'])->name('smtp_settings.send_test_mail');
-    Route::resource('smtp-settings', SmtpSettingController::class);
 
     // Theme settings
     Route::resource('theme-settings', ThemeSettingController::class);

@@ -6,7 +6,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\AppSettingController;
 use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\SmtpSettingController;
 use App\Http\Controllers\ThemeSettingController;
 use App\Http\Controllers\TwoFASettingController;
 use App\Http\Controllers\EmployeeShiftController;
@@ -46,11 +45,6 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
     Route::post('profile/updateOneSignalId', [ProfileController::class, 'updateOneSignalId'])->name('profile.update_onesignal_id');
     Route::resource('profile', ProfileController::class);
 
-    // SMTP settings
-    Route::get('smtp-settings/show-send-test-mail-modal', [SmtpSettingController::class, 'showTestEmailModal'])->name('smtp_settings.show_send_test_mail_modal');
-    Route::get('smtp-settings/send-test-mail', [SmtpSettingController::class, 'sendTestEmail'])->name('smtp_settings.send_test_mail');
-    Route::resource('smtp-settings', SmtpSettingController::class);
-    
     // Notification settings
     Route::resource('notifications', NotificationSettingController::class);
 

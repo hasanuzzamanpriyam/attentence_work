@@ -18,7 +18,7 @@ class SyncZktecoLogs extends Command
     {
         // Get device IP and port from company settings, fallback to .env
         $company = company();
-        $ip = $company->zkteco_ip ?: env('ZKTECO_IP', '192.168.1.201');
+        $ip = $company->zkteco_ip ?: env('ZKTECO_IP', '192.168.0.201');
         $port = $company->zkteco_port ?: env('ZKTECO_PORT', 4370);
 
         try {
@@ -57,7 +57,38 @@ class SyncZktecoLogs extends Command
             $mappedCount = 0;
             $unmappedCount = 0;
 
+            // Group logs by device user ID AND date to calculate type based on daily sequence
+            $logsByDeviceUserAndDate = [];
             foreach ($logs as $log) {
+                $deviceUserId = $log['id'];
+                $date = date('Y-m-d', strtotime($log['timestamp']));
+                $key = $deviceUserId . '_' . $date;
+                
+                if (!isset($logsByDeviceUserAndDate[$key])) {
+                    $logsByDeviceUserAndDate[$key] = [];
+                }
+                $logsByDeviceUserAndDate[$key][] = $log;
+            }
+
+            // Sort each group by timestamp and assign type based on daily sequence
+            $processedLogs = [];
+            foreach ($logsByDeviceUserAndDate as $key => $groupLogs) {
+                // Sort by timestamp
+                usort($groupLogs, function ($a, $b) {
+                    return strtotime($a['timestamp']) - strtotime($b['timestamp']);
+                });
+
+                // Assign type based on sequence within each day: 1st=1(IN), 2nd=2(OUT), etc.
+                foreach ($groupLogs as $index => $log) {
+                    // If device returns type=0, calculate it from daily sequence
+                    if ($log['type'] == 0 || $log['type'] == null) {
+                        $log['type'] = ($index % 2 == 0) ? 1 : 2; // Even index (0,2,4) = IN, Odd index (1,3,5) = OUT
+                    }
+                    $processedLogs[] = $log;
+                }
+            }
+
+            foreach ($processedLogs as $log) {
                 // Check if already exists to prevent duplicate
                 $exists = \App\Models\AttendanceRawLog::where('device_id', $log['uid'])
                     ->where('timestamp', $log['timestamp'])

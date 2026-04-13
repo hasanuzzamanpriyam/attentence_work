@@ -4,7 +4,11 @@
       "Bash(type *)",
       "Bash(php *)",
       "WebFetch(github.com)",
-      "WebFetch(raw.githubusercontent.com)"
+      "WebFetch(raw.githubusercontent.com)",
+      "Read(C:\\laragon\\www\\worksuite v5.5/**)",
+      "Read(C:\\/**)",
+      "Read(C:\\laragon\\www\\works/**)",
+      "Read(C:\\laragon\\www/**)"
     ]
   },
   "$version": 3

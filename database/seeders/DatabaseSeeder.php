@@ -24,7 +24,6 @@ class DatabaseSeeder extends Seeder
         Artisan::call('key:generate');
 
         $this->call(CountriesTableSeeder::class);
-        $this->call(SmtpSettingsSeeder::class);
         $this->call(CoreDatabaseSeeder::class);
         $this->call(ModulePermissionSeeder::class);
 

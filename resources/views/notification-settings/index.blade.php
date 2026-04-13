@@ -13,10 +13,6 @@
                 <div class="s-b-n-header" id="tabs">
                     <nav class="tabs px-4 border-bottom-grey">
                         <div class="nav" id="nav-tab" role="tablist">
-                            <a class="nav-item nav-link f-15 active email-setting"
-                                href="{{ route('notifications.index') }}" role="tab" aria-controls="nav-ticketAgents"
-                                aria-selected="true">@lang('app.email')
-                            </a>
                             <a class="nav-item nav-link f-15 slack-setting"
                                 href="{{ route('notifications.index') }}?tab=slack-setting" role="tab"
                                 aria-controls="nav-ticketTypes" aria-selected="true" ajax="false">@lang('app.slack') <i

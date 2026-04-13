@@ -192,8 +192,17 @@ if (!function_exists('smtp_setting')) {
     // @codingStandardsIgnoreLine
     function smtp_setting()
     {
+        // Stub function - SMTP table removed
+        // Returns default object to prevent errors
         if (!session()->has('smtp_setting')) {
-            session(['smtp_setting' => \App\Models\SmtpSetting::first()]);
+            $stub = new \stdClass();
+            $stub->mail_driver = 'mail';
+            $stub->mail_from_email = config('mail.from.address', 'noreply@example.com');
+            $stub->mail_from_name = config('mail.from.name', config('app.name', 'Worksuite'));
+            $stub->verified = 0;
+            $stub->mail_connection = 'sync';
+            $stub->mail_password = null;
+            session(['smtp_setting' => $stub]);
         }
 
         return session('smtp_setting');

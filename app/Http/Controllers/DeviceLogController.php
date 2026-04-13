@@ -7,6 +7,7 @@ use App\Models\AttendanceRawLog;
 use App\Models\AttendanceSetting;
 use App\Services\AttendanceService;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 
 class DeviceLogController extends AccountBaseController
 {
@@ -90,29 +91,43 @@ class DeviceLogController extends AccountBaseController
                     if ($logDate->month != $currentMonth || $logDate->year != $currentYear) continue;
 
                     // Sort by timestamp
-                    $dayLogs = $dayLogs->sortBy('timestamp');
+                    $dayLogs = $dayLogs->sortBy('timestamp')->values();
 
-                    $firstLog = $dayLogs->first();
-                    $lastLog = $dayLogs->last();
+                    // Pair punches: 1st=IN, 2nd=OUT, 3rd=IN, 4th=OUT, etc.
+                    $pairs = [];
+                    $totalPairs = ceil($dayLogs->count() / 2);
 
-                    // Assume type 1 is IN, 2 is OUT
-                    $checkIn = $firstLog->timestamp;
-                    $checkOut = $lastLog->timestamp;
+                    for ($i = 0; $i < $totalPairs; $i++) {
+                        $clockInIndex = $i * 2;
+                        $clockOutIndex = $clockInIndex + 1;
 
-                    $duration = $checkOut->diffInMinutes($checkIn);
+                        $clockIn = $dayLogs[$clockInIndex];
+                        $clockOut = isset($dayLogs[$clockOutIndex]) ? $dayLogs[$clockOutIndex] : null;
 
-                    $dailyData[] = [
-                        'date' => $date,
-                        'first_time' => $checkIn->format('H:i'),
-                        'last_time' => $checkOut->format('H:i'),
-                        'duration_minutes' => $duration,
-                        'all_times' => $dayLogs->map(function ($log) {
-                            return $log->timestamp->format('H:i') . ' (' . ($log->type == 1 ? 'IN' : 'OUT') . ')';
-                        })->toArray()
-                    ];
+                        $duration = 0;
+                        $isCompleted = false;
 
+                        if ($clockOut) {
+                            $duration = $clockOut->timestamp->diffInMinutes($clockIn->timestamp);
+                            $isCompleted = true;
+                            $totalDuration += $duration;
+                        }
+
+                        $pairs[] = [
+                            'date' => $date,
+                            'clock_in' => $clockIn->timestamp->format('H:i'),
+                            'clock_in_full' => $clockIn->timestamp->format('H:i:s'),
+                            'clock_out' => $clockOut ? $clockOut->timestamp->format('H:i') : '--:--',
+                            'clock_out_full' => $clockOut ? $clockOut->timestamp->format('H:i:s') : null,
+                            'duration_minutes' => $duration,
+                            'duration_hours' => $duration > 0 ? round($duration / 60, 2) : '--',
+                            'is_completed' => $isCompleted,
+                            'status' => $isCompleted ? 'Completed' : 'Still Working'
+                        ];
+                    }
+
+                    $dailyData = array_merge($dailyData, $pairs);
                     $totalWorkedDays++;
-                    $totalDuration += $duration;
                 }
 
                 $absentDays = $totalWorkingDays - $totalWorkedDays;
@@ -136,7 +151,7 @@ class DeviceLogController extends AccountBaseController
             return view('device-logs.index', $this->data);
         } catch (\Exception $e) {
             // Log the error and return a user-friendly message
-            \Log::error('Device Logs Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Device Logs Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             
             // Set default values for the view even on error
             $this->processedData = [];
@@ -158,7 +173,7 @@ class DeviceLogController extends AccountBaseController
 
             if ($exitCode !== 0) {
                 $message = $output ?: 'Failed to sync with the biometric device.';
-                \Log::error('Device Sync Failed: ' . $message);
+                Log::error('Device Sync Failed: ' . $message);
 
                 // Check if request expects JSON (AJAX)
                 if (request()->expectsJson() || request()->ajax()) {
@@ -168,7 +183,7 @@ class DeviceLogController extends AccountBaseController
                 return redirect()->back()->with('error', $message);
             }
 
-            \Log::info('Device Sync Successful: ' . $output);
+            Log::info('Device Sync Successful: ' . $output);
 
             // Check if request expects JSON (AJAX)
             if (request()->expectsJson() || request()->ajax()) {
@@ -177,7 +192,7 @@ class DeviceLogController extends AccountBaseController
 
             return redirect()->back()->with('success', 'Device synchronized successfully. ' . $output);
         } catch (\Exception $e) {
-            \Log::error('Device Sync Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Device Sync Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             $errorMessage = 'Failed to sync. Make sure device is reachable and rats/zkteco is installed. ' . $e->getMessage();
 
             // Check if request expects JSON (AJAX)
@@ -253,6 +268,126 @@ class DeviceLogController extends AccountBaseController
         } catch (\Exception $e) {
             $status['message'] = 'Error checking device: ' . $e->getMessage();
             return response()->json($status);
+        }
+    }
+
+    /**
+     * Get the latest punch log across all users
+     */
+    public function getLatestPunch()
+    {
+        try {
+            $latestLog = AttendanceRawLog::with('user:id,name,email,device_user_id')
+                ->orderBy('timestamp', 'desc')
+                ->first();
+
+            if (!$latestLog) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No punch logs found',
+                    'data' => null
+                ]);
+            }
+
+            $data = [
+                'id' => $latestLog->id,
+                'user_id' => $latestLog->user_id,
+                'device_id' => $latestLog->device_id,
+                'timestamp' => $latestLog->timestamp->format('Y-m-d H:i:s'),
+                'date' => $latestLog->timestamp->format('Y-m-d'),
+                'time' => $latestLog->timestamp->format('H:i:s'),
+                'type' => $latestLog->type,
+                'type_label' => $latestLog->type == 1 ? 'Check In' : 'Check Out',
+                'user' => $latestLog->user ? [
+                    'id' => $latestLog->user->id,
+                    'name' => $latestLog->user->name,
+                    'email' => $latestLog->user->email,
+                    'device_user_id' => $latestLog->user->device_user_id,
+                ] : null,
+                'is_mapped' => $latestLog->user_id !== null,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Latest Punch Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching latest punch: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detailed punch history for a specific user
+     */
+    public function getUserDetail($userId)
+    {
+        try {
+            $user = \App\Models\User::find($userId);
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            // Get today's punches
+            $today = now()->startOfDay();
+            $punches = AttendanceRawLog::where('user_id', $userId)
+                ->where('timestamp', '>=', $today)
+                ->orderBy('timestamp', 'asc')
+                ->get();
+
+            $punchData = $punches->map(function ($punch) {
+                return [
+                    'id' => $punch->id,
+                    'timestamp' => $punch->timestamp->format('Y-m-d H:i:s'),
+                    'time' => $punch->timestamp->format('H:i:s'),
+                    'type' => $punch->type,
+                    'type_label' => $punch->type == 1 ? 'Check In' : 'Check Out',
+                    'device_id' => $punch->device_id,
+                ];
+            });
+
+            // Get attendance record for today if exists
+            $attendance = \App\Models\Attendance::where('user_id', $userId)
+                ->whereDate('date', now())
+                ->first();
+
+            $data = [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'avatar' => $user->image_url ?? null,
+                ],
+                'date' => now()->format('Y-m-d'),
+                'punches' => $punchData,
+                'total_punches' => $punchData->count(),
+                'first_punch' => $punchData->first(),
+                'last_punch' => $punchData->last(),
+                'attendance' => $attendance ? [
+                    'clock_in_time' => $attendance->clock_in_time,
+                    'clock_out_time' => $attendance->clock_out_time,
+                    'late' => $attendance->late,
+                    'half_day' => $attendance->half_day,
+                ] : null,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            Log::error('User Detail Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching user detail: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

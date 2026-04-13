@@ -7,7 +7,6 @@ use App\Models\EmailNotificationSetting;
 use App\Models\PusherSetting;
 use App\Models\PushNotificationSetting;
 use App\Models\SlackSetting;
-use App\Models\SmtpSetting;
 use Illuminate\Contracts\Encryption\DecryptException;
 
 class NotificationSettingController extends AccountBaseController
@@ -56,26 +55,16 @@ class NotificationSettingController extends AccountBaseController
             break;
 
         default:
+            // Default to slack settings since email is removed
             $this->checkedAll = $this->emailSettings->count() == $this->emailSettings->filter(function ($value) {
-                    return $value->send_email == 'yes';
+                    return $value->send_slack == 'yes';
             })->count();
 
-            $this->smtpSetting = SmtpSetting::first();
-
-            try {
-                $this->smtpSetting->mail_password;
-            }catch (DecryptException $e){
-                // when we get message like below set password as null or o
-                // The MAC is invalid.
-                // The payload is invalid.
-                $this->smtpSetting->mail_password = null;
-                $this->smtpSetting->save();
-            }
-            $this->view = 'notification-settings.ajax.email-setting';
+            $this->view = 'notification-settings.ajax.slack-setting';
             break;
         }
 
-        $this->activeTab = $tab ?: 'email-setting';
+        $this->activeTab = $tab ?: 'slack-setting';
 
         if (request()->ajax()) {
             $html = view($this->view, $this->data)->render();
