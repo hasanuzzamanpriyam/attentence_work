@@ -113,6 +113,10 @@ class DeviceLogController extends AccountBaseController
                             $totalDuration += $duration;
                         }
 
+                        $hours = intdiv($duration, 60);
+                        $minutes = $duration % 60;
+                        $durationFormatted = $duration > 0 ? ($hours > 0 ? $hours . 'h ' : '') . sprintf('%02dm', $minutes) : '--';
+
                         $pairs[] = [
                             'date' => $date,
                             'clock_in' => $clockIn->timestamp->format('H:i'),
@@ -121,6 +125,7 @@ class DeviceLogController extends AccountBaseController
                             'clock_out_full' => $clockOut ? $clockOut->timestamp->format('H:i:s') : null,
                             'duration_minutes' => $duration,
                             'duration_hours' => $duration > 0 ? round($duration / 60, 2) : '--',
+                            'duration_formatted' => $durationFormatted,
                             'is_completed' => $isCompleted,
                             'status' => $isCompleted ? 'Completed' : 'Still Working'
                         ];
@@ -132,11 +137,15 @@ class DeviceLogController extends AccountBaseController
 
                 $absentDays = $totalWorkingDays - $totalWorkedDays;
 
+                $totalHours = round($totalDuration / 60, 2);
+                $totalDurationText = $totalDuration > 0 ? intdiv($totalDuration, 60) . 'h ' . sprintf('%02dm', $totalDuration % 60) : '--';
+
                 $processedData[] = [
                     'user' => $user,
                     'daily_logs' => $dailyData,
                     'total_worked_days' => $totalWorkedDays,
-                    'total_duration_hours' => round($totalDuration / 60, 2),
+                    'total_duration_hours' => $totalHours,
+                    'total_duration_text' => $totalDurationText,
                     'absent_days' => max(0, $absentDays)
                 ];
             }
@@ -167,7 +176,7 @@ class DeviceLogController extends AccountBaseController
         } catch (\Exception $e) {
             // Log the error and return a user-friendly message
             Log::error('Device Logs Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            
+
             // Set default values for the view even on error
             $this->processedData = [];
             $this->totalWorkingDays = 0;
@@ -175,7 +184,7 @@ class DeviceLogController extends AccountBaseController
             $this->dailyAttendance = collect([]);
             $this->rawLogs = collect([]);
             $this->workingDays = [];
-            
+
             // Check if request expects JSON (AJAX)
             if (request()->expectsJson() || request()->ajax()) {
                 return response()->json([
@@ -191,7 +200,7 @@ class DeviceLogController extends AccountBaseController
                     ]
                 ]);
             }
-            
+
             return view('device-logs.index', $this->data)->with('error', 'An error occurred while loading device logs: ' . $e->getMessage());
         }
     }
@@ -368,7 +377,7 @@ class DeviceLogController extends AccountBaseController
     {
         try {
             $user = \App\Models\User::find($userId);
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,

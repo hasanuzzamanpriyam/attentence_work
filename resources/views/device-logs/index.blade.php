@@ -102,7 +102,7 @@
                                             <th>Date</th>
                                             <th>Clock-In</th>
                                             <th>Clock-Out</th>
-                                            <th>Duration (hours)</th>
+                                            <th>Duration</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
@@ -111,24 +111,24 @@
                                             <tr>
                                                 <td>{{ \Carbon\Carbon::parse($day['date'])->format('d M Y') }}</td>
                                                 <td>
-                                                    <span class="text-success font-weight-bold">
+                                                    <span class="text-success font-weight-bold" title="{{ $day['clock_in_full'] }}">
                                                         <i class="fa fa-sign-in mr-1"></i>{{ $day['clock_in'] }}
                                                     </span>
                                                 </td>
                                                 <td>
                                                     @if($day['is_completed'])
-                                                        <span class="text-danger font-weight-bold">
+                                                        <span class="text-danger font-weight-bold" title="{{ $day['clock_out_full'] }}">
                                                             <i class="fa fa-sign-out mr-1"></i>{{ $day['clock_out'] }}
                                                         </span>
                                                     @else
-                                                        <span class="text-muted">
+                                                        <span class="text-muted" title="{{ $day['clock_out_full'] ?? '--:--:--' }}">
                                                             <i class="fa fa-hourglass-start mr-1"></i>{{ $day['clock_out'] }}
                                                         </span>
                                                     @endif
                                                 </td>
                                                 <td>
                                                     @if($day['is_completed'])
-                                                        <span class="badge badge-info">{{ $day['duration_hours'] }}</span>
+                                                        <span class="badge badge-info">{{ $day['duration_formatted'] }}</span>
                                                     @else
                                                         <span class="badge badge-secondary">--</span>
                                                     @endif
@@ -151,6 +151,31 @@
                                             </tr>
                                         @endforelse
                                     </tbody>
+                                    @if(count($userData['daily_logs']) > 0)
+                                    <tfoot>
+                                        <tr class="table-info font-weight-bold">
+                                            <td>
+                                                <strong><i class="fa fa-calculator mr-1"></i>TOTAL</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-primary">{{ $userData['total_worked_days'] }} days</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-secondary">--</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-success font-weight-bold">{{ $userData['total_duration_text'] }} ({{ $userData['total_duration_hours'] }} hrs)</span>
+                                            </td>
+                                            <td>
+                                                @if($userData['total_worked_days'] > 0)
+                                                    <span class="badge badge-info">{{ number_format($userData['total_duration_hours'] / $userData['total_worked_days'], 2) }} hrs/day avg</span>
+                                                @else
+                                                    <span class="badge badge-secondary">N/A</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                    @endif
                                 </table>
                             </div>
                         </div>
