@@ -72,7 +72,7 @@ class AttendanceService
     {
         // Check if attendance already exists for this user and date
         $attendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $date)
+            ->whereDate('clock_in_time', $date)
             ->first();
 
         $workingHours = $clockOut->diffInMinutes($clockIn);

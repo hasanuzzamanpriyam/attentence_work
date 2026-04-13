@@ -102,7 +102,7 @@
                                             <th>Date</th>
                                             <th>Clock-In</th>
                                             <th>Clock-Out</th>
-                                            <th>Duration (hours)</th>
+                                            <th>Duration</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
@@ -111,24 +111,24 @@
                                             <tr>
                                                 <td>{{ \Carbon\Carbon::parse($day['date'])->format('d M Y') }}</td>
                                                 <td>
-                                                    <span class="text-success font-weight-bold">
+                                                    <span class="text-success font-weight-bold" title="{{ $day['clock_in_full'] }}">
                                                         <i class="fa fa-sign-in mr-1"></i>{{ $day['clock_in'] }}
                                                     </span>
                                                 </td>
                                                 <td>
                                                     @if($day['is_completed'])
-                                                        <span class="text-danger font-weight-bold">
+                                                        <span class="text-danger font-weight-bold" title="{{ $day['clock_out_full'] }}">
                                                             <i class="fa fa-sign-out mr-1"></i>{{ $day['clock_out'] }}
                                                         </span>
                                                     @else
-                                                        <span class="text-muted">
+                                                        <span class="text-muted" title="{{ $day['clock_out_full'] ?? '--:--:--' }}">
                                                             <i class="fa fa-hourglass-start mr-1"></i>{{ $day['clock_out'] }}
                                                         </span>
                                                     @endif
                                                 </td>
                                                 <td>
                                                     @if($day['is_completed'])
-                                                        <span class="badge badge-info">{{ $day['duration_hours'] }}</span>
+                                                        <span class="badge badge-info">{{ $day['duration_formatted'] }}</span>
                                                     @else
                                                         <span class="badge badge-secondary">--</span>
                                                     @endif
@@ -151,6 +151,31 @@
                                             </tr>
                                         @endforelse
                                     </tbody>
+                                    @if(count($userData['daily_logs']) > 0)
+                                    <tfoot>
+                                        <tr class="table-info font-weight-bold">
+                                            <td>
+                                                <strong><i class="fa fa-calculator mr-1"></i>TOTAL</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-primary">{{ $userData['total_worked_days'] }} days</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-secondary">--</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-success font-weight-bold">{{ $userData['total_duration_text'] }} ({{ $userData['total_duration_hours'] }} hrs)</span>
+                                            </td>
+                                            <td>
+                                                @if($userData['total_worked_days'] > 0)
+                                                    <span class="badge badge-info">{{ number_format($userData['total_duration_hours'] / $userData['total_worked_days'], 2) }} hrs/day avg</span>
+                                                @else
+                                                    <span class="badge badge-secondary">N/A</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                    @endif
                                 </table>
                             </div>
                         </div>
@@ -240,33 +265,60 @@
                 btn.prop('disabled', true);
                 btn.html('<i class="fa fa-spinner fa-spin mr-2"></i> Syncing...');
 
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            showNotification('success', response.message);
-                            // Refresh device status after sync
-                            setTimeout(() => checkDeviceStatus(), 2000);
-                        } else {
-                            showNotification('error', response.message);
-                        }
-                    },
-                    error: function(xhr) {
-                        var message = 'An error occurred during sync.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            message = xhr.responseJSON.message;
-                        }
-                        showNotification('error', message);
-                    },
-                    complete: function() {
-                        // Re-enable button and restore original text
-                        btn.prop('disabled', false);
-                        btn.html(originalText);
+                performSync(function(response) {
+                    if (response.status === 'success') {
+                        showNotification('success', response.message);
+                        // Refresh device status after sync
+                        setTimeout(() => checkDeviceStatus(), 2000);
+                    } else {
+                        showNotification('error', response.message);
                     }
+                }, function(xhr) {
+                    var message = 'An error occurred during sync.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                    showNotification('error', message);
+                }, function() {
+                    // Re-enable button and restore original text
+                    btn.prop('disabled', false);
+                    btn.html(originalText);
                 });
             });
+
+            // Auto-sync every 30 seconds
+            setInterval(function() {
+                performAutoSync();
+            }, 30 * 1000); // 30 seconds
+
+            // Function to perform sync
+            function performSync(successCallback, errorCallback, completeCallback) {
+                $.ajax({
+                    url: '{{ route("device-logs.sync") }}',
+                    type: 'POST',
+                    data: {
+                        '_token': '{{ csrf_token() }}'
+                    },
+                    success: successCallback,
+                    error: errorCallback,
+                    complete: completeCallback
+                });
+            }
+
+            // Function to perform auto-sync (silent)
+            function performAutoSync() {
+                performSync(function(response) {
+                    if (response.status === 'success') {
+                        console.log('Auto-sync successful:', response.message);
+                        // Refresh device status after auto-sync
+                        setTimeout(() => checkDeviceStatus(), 2000);
+                    }
+                }, function(xhr) {
+                    console.error('Auto-sync failed:', xhr);
+                }, function() {
+                    // No UI changes for auto-sync
+                });
+            }
 
             // Function to check device status
             function checkDeviceStatus() {
