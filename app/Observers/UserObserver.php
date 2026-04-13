@@ -27,7 +27,9 @@ class UserObserver
     public function created(User $user)
     {
         if (!isRunningInConsoleOrSeeding()) {
-            $sendMail = true;
+            // Email sending disabled - SMTP removed
+            // Set to false to prevent email notifications when creating users
+            $sendMail = false;
 
             if (request()->has('sendMail') && request()->sendMail == 'no') {
                 $sendMail = false;

@@ -852,7 +852,8 @@ class HomeController extends Controller
             $client->password = Hash::make($password);
             $client->save();
 
-            event(new NewUserEvent($client, $password));
+            // Email notification disabled - SMTP removed
+            // event(new NewUserEvent($client, $password));
 
             // attach role
             $role = Role::withoutGlobalScope(CompanyScope::class)
