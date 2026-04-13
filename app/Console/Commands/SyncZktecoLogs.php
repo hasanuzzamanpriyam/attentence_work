@@ -124,7 +124,7 @@ class SyncZktecoLogs extends Command
                     $user = \App\Models\User::create([
                         'name' => $userName,
                         'email' => $userEmail,
-                        'password' => bcrypt(\Str::random(16)),
+                        'password' => bcrypt('12345678'), // Default password, should be changed by user
                         'device_user_id' => (string)$lookupId,
                         'status' => 'active',
                         'locale' => 'en',
@@ -199,7 +199,7 @@ class SyncZktecoLogs extends Command
                         $user = \App\Models\User::create([
                             'name' => $userName,
                             'email' => $userEmail,
-                            'password' => bcrypt(\Str::random(16)),
+                            'password' => bcrypt('12345678'), // Default password
                             'device_user_id' => (string)$log['uid'],
                             'status' => 'active',
                             'locale' => 'en',
