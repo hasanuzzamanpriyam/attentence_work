@@ -69,7 +69,63 @@ $deleteAttendancePermission = user()->permission('delete_attendance');
                 @endif
 
                 <div class="recent-activity">
-                    @foreach ($attendanceActivity->reverse() as $item)
+                    @php
+                        $rawLogs = \App\Models\AttendanceRawLog::where('user_id', $attendance->user->id)
+                            ->whereDate('timestamp', \Carbon\Carbon::parse($attendance->clock_in_time)->format('Y-m-d'))
+                            ->orderBy('timestamp', 'asc')
+                            ->get();
+                        
+                        $mainRecord = $attendanceActivity->first();
+                        $displayActivities = collect();
+                        
+                        if ($rawLogs->count() > 0) {
+                            $totalPairs = ceil($rawLogs->count() / 2);
+                            for ($i = 0; $i < $totalPairs; $i++) {
+                                $inIndex = $i * 2;
+                                $outIndex = $inIndex + 1;
+                                
+                                $clockInLog = $rawLogs[$inIndex];
+                                $clockOutLog = isset($rawLogs[$outIndex]) ? $rawLogs[$outIndex] : null;
+                                
+                                $fakeItem = new \stdClass();
+                                $fakeItem->aId = 'raw_' . $clockInLog->id;
+                                $fakeItem->clock_in_time = clone $clockInLog->timestamp;
+                                $fakeItem->clock_out_time = $clockOutLog ? clone $clockOutLog->timestamp : null;
+                                
+                                if ($i == 0 && $mainRecord) {
+                                    $fakeItem->late = $mainRecord->late;
+                                    $fakeItem->half_day = $mainRecord->half_day;
+                                    $fakeItem->half_day_type = $mainRecord->half_day_type;
+                                    $fakeItem->shift = $mainRecord->shift;
+                                    $fakeItem->employee_shift_id = $mainRecord->employee_shift_id;
+                                } else {
+                                    $fakeItem->late = 'no';
+                                    $fakeItem->half_day = 'no';
+                                    $fakeItem->half_day_type = null;
+                                    $fakeItem->shift = $mainRecord ? $mainRecord->shift : null;
+                                    $fakeItem->employee_shift_id = $mainRecord ? $mainRecord->employee_shift_id : null;
+                                }
+                                
+                                $fakeItem->clock_in_type = 'biometric';
+                                $fakeItem->work_from_type = '';
+                                $fakeItem->clock_out_time_work_from_type = '';
+                                $fakeItem->latitude = '';
+                                $fakeItem->longitude = '';
+                                $fakeItem->location = '';
+                                $fakeItem->working_from = '';
+                                $fakeItem->clockOutLocation = '';
+                                $fakeItem->auto_clock_out = false;
+                                $fakeItem->added_by = null;
+                                
+                                $displayActivities->push($fakeItem);
+                            }
+                            $displayActivities = $displayActivities->reverse();
+                        } else {
+                            $displayActivities = $attendanceActivity->reverse();
+                        }
+                    @endphp
+
+                    @foreach ($displayActivities as $item)
                         <div class="row res-activity-box" id="timelogBox{{ $item->aId }}">
                             <ul class="res-activity-list col-md-9">
                                 <li>
@@ -159,45 +215,47 @@ $deleteAttendancePermission = user()->permission('delete_attendance');
 
                             <div class="col-md-3 text-right">
                                 <div class="dropdown ml-auto comment-action">
-                                    @if ($editAttendancePermission == 'all'
-                                        || ($addAttendancePermission == 'all')
-                                        || ($editAttendancePermission == 'added' && $item->added_by == user()->id)
-                                        || ($editAttendancePermission == 'owned' && $attendance->user->id == user()->id)
-                                        || ($editAttendancePermission == 'both' && ($item->added_by == user()->id || $attendance->user->id == user()->id))
-                                        || $deleteAttendancePermission == 'all'
-                                        || ($deleteAttendancePermission == 'added' && $item->added_by == user()->id)
-                                        || ($deleteAttendancePermission == 'owned' && $attendance->user->id == user()->id)
-                                        || ($deleteAttendancePermission == 'both' && ($item->added_by == user()->id || $attendance->user->id == user()->id))
-                                    )
-                                    <button
-                                        class="btn btn-lg f-14 py-0 text-lightest  rounded  dropdown-toggle"
-                                        type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="fa fa-ellipsis-h"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-right border-grey rounded b-shadow-4 p-0 mr-2"
-                                        aria-labelledby="dropdownMenuLink" tabindex="0">
-
+                                    @if (!str_starts_with($item->aId, 'raw_'))
                                         @if ($editAttendancePermission == 'all'
+                                            || ($addAttendancePermission == 'all')
                                             || ($editAttendancePermission == 'added' && $item->added_by == user()->id)
                                             || ($editAttendancePermission == 'owned' && $attendance->user->id == user()->id)
                                             || ($editAttendancePermission == 'both' && ($item->added_by == user()->id || $attendance->user->id == user()->id))
-                                            )
-                                            <a class="dropdown-item d-block text-dark-grey f-13 py-1 px-3"
-                                                href="javascript:;" onclick="editAttendance({{ $item->aId }})"
-                                                data-attendance-id="{{ $item->aId }}">@lang('app.edit')</a>
-                                        @endif
-
-                                        @if ($deleteAttendancePermission == 'all'
+                                            || $deleteAttendancePermission == 'all'
                                             || ($deleteAttendancePermission == 'added' && $item->added_by == user()->id)
                                             || ($deleteAttendancePermission == 'owned' && $attendance->user->id == user()->id)
                                             || ($deleteAttendancePermission == 'both' && ($item->added_by == user()->id || $attendance->user->id == user()->id))
-                                            )
-                                            <a class="cursor-pointer dropdown-item d-block text-dark-grey f-13 pb-1 px-3"
-                                                onclick="deleteAttendance({{ $item->aId }})"
-                                                data-attendance-id="{{ $item->aId }}"
-                                                href="javascript:;">@lang('app.delete')</a>
+                                        )
+                                        <button
+                                            class="btn btn-lg f-14 py-0 text-lightest  rounded  dropdown-toggle"
+                                            type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fa fa-ellipsis-h"></i>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-right border-grey rounded b-shadow-4 p-0 mr-2"
+                                            aria-labelledby="dropdownMenuLink" tabindex="0">
+
+                                            @if ($editAttendancePermission == 'all'
+                                                || ($editAttendancePermission == 'added' && $item->added_by == user()->id)
+                                                || ($editAttendancePermission == 'owned' && $attendance->user->id == user()->id)
+                                                || ($editAttendancePermission == 'both' && ($item->added_by == user()->id || $attendance->user->id == user()->id))
+                                                )
+                                                <a class="dropdown-item d-block text-dark-grey f-13 py-1 px-3"
+                                                    href="javascript:;" onclick="editAttendance({{ $item->aId }})"
+                                                    data-attendance-id="{{ $item->aId }}">@lang('app.edit')</a>
+                                            @endif
+
+                                            @if ($deleteAttendancePermission == 'all'
+                                                || ($deleteAttendancePermission == 'added' && $item->added_by == user()->id)
+                                                || ($deleteAttendancePermission == 'owned' && $attendance->user->id == user()->id)
+                                                || ($deleteAttendancePermission == 'both' && ($item->added_by == user()->id || $attendance->user->id == user()->id))
+                                                )
+                                                <a class="cursor-pointer dropdown-item d-block text-dark-grey f-13 pb-1 px-3"
+                                                    onclick="deleteAttendance({{ $item->aId }})"
+                                                    data-attendance-id="{{ $item->aId }}"
+                                                    href="javascript:;">@lang('app.delete')</a>
+                                            @endif
+                                        </div>
                                         @endif
-                                    </div>
                                     @endif
                                 </div>
 

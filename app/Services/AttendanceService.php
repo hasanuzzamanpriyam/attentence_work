@@ -31,9 +31,10 @@ class AttendanceService
 
         $rawLogs = $query->orderBy('timestamp')->get();
 
-        // Group by user and date
+        // Group by user and date (using company timezone)
         $groupedLogs = $rawLogs->groupBy(function ($log) {
-            return $log->user_id . '_' . $log->timestamp->format('Y-m-d');
+            $companyTimezone = company() ? company()->timezone : \App\Models\Company::first()->timezone;
+            return $log->user_id . '_' . $log->timestamp->timezone($companyTimezone)->format('Y-m-d');
         });
 
         foreach ($groupedLogs as $groupKey => $logs) {
@@ -44,17 +45,25 @@ class AttendanceService
             $user = User::find($userId);
             if (!$user) continue;
 
-            $date = Carbon::parse($dateStr);
+            $date = \Carbon\Carbon::parse($dateStr);
 
             // Sort logs by timestamp for the day
-            $dayLogs = $logs->sortBy('timestamp');
+            $dayLogs = $logs->sortBy('timestamp')->values();
 
-            // Get first and last punch
-            $firstLog = $dayLogs->first();
-            $lastLog = $dayLogs->last();
+            $currentIn = null;
 
-            if ($firstLog && $lastLog) {
-                $this->createOrUpdateAttendance($user, $date, $firstLog->timestamp, $lastLog->timestamp);
+            foreach ($dayLogs as $log) {
+                if ($log->type == 1) { // Check-in
+                    $currentIn = $log;
+                } elseif ($log->type == 2 && $currentIn) { // Check-out for current Check-in
+                    $this->createOrUpdateAttendance($user, $date, $currentIn->timestamp, $log->timestamp);
+                    $currentIn = null; // Reset for next pair
+                }
+            }
+
+            // Handle orphaned check-in (last punch of the day is an IN)
+            if ($currentIn) {
+                $this->createOrUpdateAttendance($user, $date, $currentIn->timestamp, null);
             }
         }
     }
@@ -68,48 +77,38 @@ class AttendanceService
      * @param Carbon $clockOut
      * @return Attendance
      */
-    private function createOrUpdateAttendance(User $user, Carbon $date, Carbon $clockIn, Carbon $clockOut)
+    private function createOrUpdateAttendance(User $user, Carbon $date, Carbon $clockIn, ?Carbon $clockOut)
     {
-        // Check if attendance already exists for this user and date
+        // Check if attendance already exists for this user and specific clock-in time
         $attendance = Attendance::where('user_id', $user->id)
-            ->whereDate('clock_in_time', $date)
+            ->where('clock_in_time', $clockIn->toDateTimeString())
             ->first();
-
-        $workingHours = $clockOut->diffInMinutes($clockIn);
 
         // Get IP address safely for both HTTP and console context
         $ipAddress = $this->getIpAddress();
 
+        $data = [
+            'user_id' => $user->id,
+            'clock_in_time' => $clockIn,
+            'clock_out_time' => $clockOut,
+            'clock_in_type' => 'biometric',
+            'clock_out_type' => $clockOut ? 'biometric' : null,
+            'working_from' => 'device',
+            'work_from_type' => 'device',
+            'clock_in_ip' => $ipAddress,
+            'clock_out_ip' => $clockOut ? $ipAddress : null,
+            'last_updated_by' => $user->id,
+            'company_id' => $user->company_id ?? (company() ? company()->id : (\App\Models\Company::first() ? \App\Models\Company::first()->id : 1)),
+        ];
+
         if ($attendance) {
             // Update existing attendance
-            $attendance->update([
-                'clock_in_time' => $clockIn,
-                'clock_out_time' => $clockOut,
-                'clock_in_type' => 'biometric',
-                'clock_out_type' => 'biometric',
-                'working_from' => 'device',
-                'work_from_type' => 'device',
-                'clock_in_ip' => $ipAddress,
-                'clock_out_ip' => $ipAddress,
-                'last_updated_by' => $user->id,
-            ]);
+            $attendance->update($data);
         } else {
             // Create new attendance
-            $attendance = Attendance::create([
-                'user_id' => $user->id,
-                'clock_in_time' => $clockIn,
-                'clock_out_time' => $clockOut,
-                'clock_in_type' => 'biometric',
-                'clock_out_type' => 'biometric',
-                'clock_in_ip' => $ipAddress,
-                'clock_out_ip' => $ipAddress,
-                'working_from' => 'device',
-                'work_from_type' => 'device',
-                'date' => $date,
-                'added_by' => $user->id,
-                'last_updated_by' => $user->id,
-                'company_id' => $user->company_id ?? company()->id,
-            ]);
+            $data['added_by'] = $user->id;
+            $data['date'] = $date;
+            $attendance = Attendance::create($data);
         }
 
         return $attendance;
