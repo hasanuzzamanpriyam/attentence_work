@@ -177,9 +177,12 @@ class SyncZktecoLogs extends Command
             }
 
             foreach ($processedLogs as $log) {
+                // Convert device timestamp (assumed Local) to UTC
+                $logTimestamp = \Carbon\Carbon::parse($log['timestamp'], $company->timezone)->timezone('UTC');
+
                 // Check if already exists to prevent duplicate
                 $exists = \App\Models\AttendanceRawLog::where('device_id', $log['uid'])
-                    ->where('timestamp', $log['timestamp'])
+                    ->where('timestamp', $logTimestamp)
                     ->exists();
 
                 if (!$exists) {
@@ -215,7 +218,7 @@ class SyncZktecoLogs extends Command
                     \App\Models\AttendanceRawLog::create([
                         'user_id' => $user ? $user->id : null,
                         'device_id' => $log['uid'],
-                        'timestamp' => $log['timestamp'],
+                        'timestamp' => $logTimestamp,
                         'type' => $log['type']
                     ]);
 

@@ -78,7 +78,7 @@ class DeviceLogController extends AccountBaseController
 
                 // Group by date
                 $dateGroups = $userLogCollection->groupBy(function ($log) {
-                    return $log->timestamp->format('Y-m-d');
+                    return $log->timestamp->timezone(company()->timezone)->format('Y-m-d');
                 });
 
                 $dailyData = [];
@@ -108,7 +108,7 @@ class DeviceLogController extends AccountBaseController
                         $isCompleted = false;
 
                         if ($clockOut) {
-                            $duration = $clockOut->timestamp->diffInMinutes($clockIn->timestamp);
+                            $duration = $clockOut->timestamp->timezone(company()->timezone)->diffInMinutes($clockIn->timestamp->timezone(company()->timezone));
                             $isCompleted = true;
                             $totalDuration += $duration;
                         }
@@ -119,10 +119,10 @@ class DeviceLogController extends AccountBaseController
 
                         $pairs[] = [
                             'date' => $date,
-                            'clock_in' => $clockIn->timestamp->format('H:i'),
-                            'clock_in_full' => $clockIn->timestamp->format('H:i:s'),
-                            'clock_out' => $clockOut ? $clockOut->timestamp->format('H:i') : '--:--',
-                            'clock_out_full' => $clockOut ? $clockOut->timestamp->format('H:i:s') : null,
+                            'clock_in' => $clockIn->timestamp->timezone(company()->timezone)->format('H:i'),
+                            'clock_in_full' => $clockIn->timestamp->timezone(company()->timezone)->format('H:i:s'),
+                            'clock_out' => $clockOut ? $clockOut->timestamp->timezone(company()->timezone)->format('H:i') : '--:--',
+                            'clock_out_full' => $clockOut ? $clockOut->timestamp->timezone(company()->timezone)->format('H:i:s') : null,
                             'duration_minutes' => $duration,
                             'duration_hours' => $duration > 0 ? round($duration / 60, 2) : '--',
                             'duration_formatted' => $durationFormatted,
@@ -309,7 +309,7 @@ class DeviceLogController extends AccountBaseController
 
                 // Group by date
                 $dateGroups = $userLogCollection->groupBy(function ($log) {
-                    return $log->timestamp->format('Y-m-d');
+                    return $log->timestamp->timezone(company()->timezone)->format('Y-m-d');
                 });
 
                 $dailyData = [];
@@ -339,7 +339,7 @@ class DeviceLogController extends AccountBaseController
                         $isCompleted = false;
 
                         if ($clockOut) {
-                            $duration = $clockOut->timestamp->diffInMinutes($clockIn->timestamp);
+                            $duration = $clockOut->timestamp->timezone(company()->timezone)->diffInMinutes($clockIn->timestamp->timezone(company()->timezone));
                             $isCompleted = true;
                             $totalDuration += $duration;
                         }
@@ -350,10 +350,10 @@ class DeviceLogController extends AccountBaseController
 
                         $pairs[] = [
                             'date' => $date,
-                            'clock_in' => $clockIn->timestamp->format('H:i'),
-                            'clock_in_full' => $clockIn->timestamp->format('H:i:s'),
-                            'clock_out' => $clockOut ? $clockOut->timestamp->format('H:i') : '--:--',
-                            'clock_out_full' => $clockOut ? $clockOut->timestamp->format('H:i:s') : null,
+                            'clock_in' => $clockIn->timestamp->timezone(company()->timezone)->format('H:i'),
+                            'clock_in_full' => $clockIn->timestamp->timezone(company()->timezone)->format('H:i:s'),
+                            'clock_out' => $clockOut ? $clockOut->timestamp->timezone(company()->timezone)->format('H:i') : '--:--',
+                            'clock_out_full' => $clockOut ? $clockOut->timestamp->timezone(company()->timezone)->format('H:i:s') : null,
                             'duration_minutes' => $duration,
                             'duration_hours' => $duration > 0 ? round($duration / 60, 2) : '--',
                             'duration_formatted' => $durationFormatted,
@@ -395,9 +395,9 @@ class DeviceLogController extends AccountBaseController
                     'logs' => $logs->sortBy('timestamp')->map(function ($log) {
                         return [
                             'id' => $log->id,
-                            'timestamp' => $log->timestamp->format('Y-m-d H:i:s'),
-                            'date' => $log->timestamp->format('d M Y'),
-                            'time' => $log->timestamp->format('H:i:s'),
+                            'timestamp' => $log->timestamp->timezone(company()->timezone)->format('Y-m-d H:i:s'),
+                            'date' => $log->timestamp->timezone(company()->timezone)->format('d M Y'),
+                            'time' => $log->timestamp->timezone(company()->timezone)->format('H:i:s'),
                             'type' => $log->type,
                             'type_label' => $log->type == 1 ? 'Check In' : ($log->type == 2 ? 'Check Out' : 'Unknown (Type: ' . $log->type . ')'),
                         ];
@@ -513,9 +513,9 @@ class DeviceLogController extends AccountBaseController
                 'id' => $latestLog->id,
                 'user_id' => $latestLog->user_id,
                 'device_id' => $latestLog->device_id,
-                'timestamp' => $latestLog->timestamp->format('Y-m-d H:i:s'),
-                'date' => $latestLog->timestamp->format('Y-m-d'),
-                'time' => $latestLog->timestamp->format('H:i:s'),
+                'timestamp' => $latestLog->timestamp->timezone(company()->timezone)->format('Y-m-d H:i:s'),
+                'date' => $latestLog->timestamp->timezone(company()->timezone)->format('Y-m-d'),
+                'time' => $latestLog->timestamp->timezone(company()->timezone)->format('H:i:s'),
                 'type' => $latestLog->type,
                 'type_label' => $latestLog->type == 1 ? 'Check In' : 'Check Out',
                 'user' => $latestLog->user ? [
@@ -565,8 +565,8 @@ class DeviceLogController extends AccountBaseController
             $punchData = $punches->map(function ($punch) {
                 return [
                     'id' => $punch->id,
-                    'timestamp' => $punch->timestamp->format('Y-m-d H:i:s'),
-                    'time' => $punch->timestamp->format('H:i:s'),
+                    'timestamp' => $punch->timestamp->timezone(company()->timezone)->format('Y-m-d H:i:s'),
+                    'time' => $punch->timestamp->timezone(company()->timezone)->format('H:i:s'),
                     'type' => $punch->type,
                     'type_label' => $punch->type == 1 ? 'Check In' : 'Check Out',
                     'device_id' => $punch->device_id,

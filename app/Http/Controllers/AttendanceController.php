@@ -270,9 +270,9 @@ class AttendanceController extends AccountBaseController
                         ->orderBy('timestamp', 'desc')
                         ->value('timestamp');
                     
-                    // Use biometric device time if available, otherwise fallback to attendances table
-                    $actualCheckInTime = $biometricCheckIn ? Carbon::parse($biometricCheckIn) : $clockInTime;
-                    $actualCheckOutTime = $biometricCheckOut ? Carbon::parse($biometricCheckOut) : $attendance->clock_out_time;
+                    // Use biometric device time if available (convert UTC from DB to local), otherwise fallback to attendances table
+                    $actualCheckInTime = $biometricCheckIn ? Carbon::parse($biometricCheckIn)->timezone(company()->timezone) : $clockInTime;
+                    $actualCheckOutTime = $biometricCheckOut ? Carbon::parse($biometricCheckOut)->timezone(company()->timezone) : $attendance->clock_out_time;
 
                     $status = $this->calculateAttendanceStatus(
                         $actualCheckInTime,
@@ -287,7 +287,7 @@ class AttendanceController extends AccountBaseController
                     
                     // Enhanced tooltip showing both device time and expected time
                     if ($biometricCheckIn && $expectedCheckIn) {
-                        $tooltipTitle = "Device: " . Carbon::parse($biometricCheckIn)->format('H:i') . 
+                        $tooltipTitle = "Device: " . Carbon::parse($biometricCheckIn)->timezone(company()->timezone)->format('H:i') . 
                                        " | Expected: " . $expectedCheckIn->format('H:i') . 
                                        " - " . $iconData[2];
                     } else {
