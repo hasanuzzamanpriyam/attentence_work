@@ -33,7 +33,8 @@ class AttendanceService
 
         // Group by user and date (using company timezone)
         $groupedLogs = $rawLogs->groupBy(function ($log) {
-            return $log->user_id . '_' . $log->timestamp->timezone(company()->timezone)->format('Y-m-d');
+            $companyTimezone = company() ? company()->timezone : \App\Models\Company::first()->timezone;
+            return $log->user_id . '_' . $log->timestamp->timezone($companyTimezone)->format('Y-m-d');
         });
 
         foreach ($groupedLogs as $groupKey => $logs) {
@@ -97,7 +98,7 @@ class AttendanceService
             'clock_in_ip' => $ipAddress,
             'clock_out_ip' => $clockOut ? $ipAddress : null,
             'last_updated_by' => $user->id,
-            'company_id' => $user->company_id ?? (company() ? company()->id : 1),
+            'company_id' => $user->company_id ?? (company() ? company()->id : (\App\Models\Company::first() ? \App\Models\Company::first()->id : 1)),
         ];
 
         if ($attendance) {
