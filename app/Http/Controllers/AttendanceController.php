@@ -246,12 +246,62 @@ class AttendanceController extends AccountBaseController
                     $isLate[$employee->id][$startOfDayKey] = $attendance->late == 'yes';
                 }
 
-                $iconClassKey = $isHalfDay[$employee->id][$startOfDayKey] ? 'star-half-alt text-red' : ($isLate[$employee->id][$startOfDayKey] ? 'exclamation-circle text-warning' : 'check text-success');
+                // ENHANCED: Calculate status using BIOMETRIC DEVICE time from attendance_raw_logs
+                $expectedCheckIn = $employee->check_in_time ? Carbon::parse($employee->check_in_time) : null;
+                $expectedCheckOut = $employee->check_out_time ? Carbon::parse($employee->check_out_time) : null;
+                $expectedDutyMinutes = $employee->expected_duty_minutes;
 
-                // Tooltip title based on attendance status or presence
-                $tooltipTitle =  $attendance->employee_shift_id && $attendance->shift ? $attendance->shift->shift_name : __('app.present');
+                // Use new status calculation if duty times are set, otherwise fallback to old logic
+                if ($expectedCheckIn || $expectedCheckOut) {
+                    // Get BIOMETRIC DEVICE punch times from attendance_raw_logs table
+                    $dateForQuery = $clockInTime->format('Y-m-d');
+                    
+                    // Get first check-in punch from biometric device
+                    $biometricCheckIn = \App\Models\AttendanceRawLog::where('user_id', $employee->id)
+                        ->whereDate('timestamp', $dateForQuery)
+                        ->where('type', 1)  // Check-in type
+                        ->orderBy('timestamp', 'asc')
+                        ->value('timestamp');
+                    
+                    // Get last check-out punch from biometric device
+                    $biometricCheckOut = \App\Models\AttendanceRawLog::where('user_id', $employee->id)
+                        ->whereDate('timestamp', $dateForQuery)
+                        ->where('type', 2)  // Check-out type
+                        ->orderBy('timestamp', 'desc')
+                        ->value('timestamp');
+                    
+                    // Use biometric device time if available, otherwise fallback to attendances table
+                    $actualCheckInTime = $biometricCheckIn ? Carbon::parse($biometricCheckIn) : $clockInTime;
+                    $actualCheckOutTime = $biometricCheckOut ? Carbon::parse($biometricCheckOut) : $attendance->clock_out_time;
 
-                // Construct the attendance HTML once
+                    $status = $this->calculateAttendanceStatus(
+                        $actualCheckInTime,
+                        $actualCheckOutTime,
+                        $expectedCheckIn,
+                        $expectedCheckOut,
+                        $expectedDutyMinutes
+                    );
+
+                    $iconData = $this->getIconForStatus($status);
+                    $iconClassKey = $iconData[0] . ' ' . $iconData[1];
+                    
+                    // Enhanced tooltip showing both device time and expected time
+                    if ($biometricCheckIn && $expectedCheckIn) {
+                        $tooltipTitle = "Device: " . Carbon::parse($biometricCheckIn)->format('H:i') . 
+                                       " | Expected: " . $expectedCheckIn->format('H:i') . 
+                                       " - " . $iconData[2];
+                    } else {
+                        $tooltipTitle = $attendance->employee_shift_id && $attendance->shift
+                            ? $attendance->shift->shift_name . ' - ' . $iconData[2]
+                            : $iconData[2];
+                    }
+                } else {
+                    // Fallback to old logic if no duty times set
+                    $iconClassKey = $isHalfDay[$employee->id][$startOfDayKey] ? 'star-half-alt text-red' : ($isLate[$employee->id][$startOfDayKey] ? 'exclamation-circle text-warning' : 'check text-success');
+                    $tooltipTitle = $attendance->employee_shift_id && $attendance->shift ? $attendance->shift->shift_name : __('app.present');
+                }
+
+                // Construct the attendance HTML
                 $attendanceHtml = "<a href=\"javascript:;\" data-toggle=\"tooltip\" data-original-title=\"{$tooltipTitle}\" class=\"view-attendance\" data-attendance-id=\"{$attendance->id}\"><i class=\"fa fa-{$iconClassKey}\"></i></a>";
 
                 // Determine the day to assign the attendanceHtml
@@ -2187,5 +2237,178 @@ class AttendanceController extends AccountBaseController
         }
 
         return $attendanceSettings->shift;
+    }
+
+    /**
+     * Calculate detailed attendance status based on user's duty times
+     *
+     * @param Carbon|null $actualCheckIn
+     * @param Carbon|null $actualCheckOut
+     * @param Carbon|null $expectedCheckIn
+     * @param Carbon|null $expectedCheckOut
+     * @param int|null $expectedDutyMinutes
+     * @return array
+     */
+    private function calculateAttendanceStatus(
+        $actualCheckIn,
+        $actualCheckOut,
+        $expectedCheckIn,
+        $expectedCheckOut,
+        $expectedDutyMinutes
+    ) {
+        $status = [
+            'check_in_status' => 'present',
+            'check_out_status' => 'normal',
+            'worked_minutes' => 0,
+            'icon' => 'check',
+            'color' => 'text-success',
+            'tooltip' => __('app.present')
+        ];
+
+        // Calculate worked minutes
+        if ($actualCheckIn && $actualCheckOut) {
+            $status['worked_minutes'] = $actualCheckIn->diffInMinutes($actualCheckOut);
+        }
+
+        // CHECK-IN STATUS LOGIC
+        if ($actualCheckIn && $expectedCheckIn) {
+            // Calculate difference: positive = early, negative = late
+            $actualCheckInTime = Carbon::parse($actualCheckIn->format('H:i:s'));
+            $expectedCheckInTime = Carbon::parse($expectedCheckIn->format('H:i:s'));
+            
+            // Minutes difference (negative means late, positive means early)
+            $diffMinutes = $expectedCheckInTime->diffInMinutes($actualCheckInTime) * ($actualCheckInTime->gt($expectedCheckInTime) ? -1 : 1);
+
+            if ($diffMinutes > 0) {
+                // Early check-in (e.g., +30 means 30 min early)
+                $status['check_in_status'] = 'early';
+                $status['icon'] = 'arrow-circle-left';
+                $status['color'] = 'text-info';
+                $status['tooltip'] = "Early by " . abs($diffMinutes) . " min";
+            } elseif ($diffMinutes >= -10 && $diffMinutes <= 0) {
+                // On time or up to 10 min late = Present
+                $status['check_in_status'] = 'present';
+                $status['icon'] = 'check';
+                $status['color'] = 'text-success';
+                $status['tooltip'] = 'Present (on time)';
+            } else {
+                // More than 10 min late = Late
+                $status['check_in_status'] = 'late';
+                $status['icon'] = 'exclamation-circle';
+                $status['color'] = 'text-warning';
+                $status['tooltip'] = "Late by " . abs($diffMinutes) . " min";
+            }
+        } elseif ($actualCheckIn) {
+            // No expected time set, just mark as present
+            $status['check_in_status'] = 'present';
+            $status['icon'] = 'check';
+            $status['color'] = 'text-success';
+            $status['tooltip'] = __('app.present');
+        }
+
+        // CHECK-OUT STATUS LOGIC
+        if ($actualCheckOut && $expectedCheckOut && $expectedDutyMinutes) {
+            $actualCheckOutTime = Carbon::parse($actualCheckOut->format('H:i:s'));
+            $expectedCheckOutTime = Carbon::parse($expectedCheckOut->format('H:i:s'));
+            
+            // Positive = stayed late, Negative = left early
+            $checkoutDiff = $actualCheckOutTime->diffInMinutes($expectedCheckOutTime) * ($actualCheckOutTime->lt($expectedCheckOutTime) ? -1 : 1);
+            
+            $workedMinutes = $status['worked_minutes'];
+            $deficitMinutes = $expectedDutyMinutes - $workedMinutes;
+
+            if ($checkoutDiff < 0 && $deficitMinutes > 0) {
+                // Checked out early and didn't complete full duty
+                if ($deficitMinutes <= 30) {
+                    // Left up to 30 min early = Early Leave (minor)
+                    $status['check_out_status'] = 'early_leave';
+                    $status['icon'] = 'sign-out';
+                    $status['color'] = 'text-orange';
+                    $status['tooltip'] = "Early leave (worked " . round($workedMinutes/60, 1) . "h)";
+                } elseif ($deficitMinutes >= $expectedDutyMinutes / 2) {
+                    // Worked less than or equal to half = Half Day
+                    $status['check_out_status'] = 'half_day';
+                    $status['icon'] = 'star-half-alt';
+                    $status['color'] = 'text-red';
+                    $status['tooltip'] = "Half day (worked " . round($workedMinutes/60, 1) . "h of " . round($expectedDutyMinutes/60, 1) . "h)";
+                } else {
+                    // Worked more than half but left early (31 min to <50% deficit)
+                    $status['check_out_status'] = 'early_leave';
+                    $status['icon'] = 'sign-out';
+                    $status['color'] = 'text-orange';
+                    $status['tooltip'] = "Early by " . abs($checkoutDiff) . " min";
+                }
+            } else {
+                // Checked out on time or late, or completed full duty
+                if ($status['check_in_status'] == 'late') {
+                    // Was late but stayed full time or overtime
+                    $status['check_out_status'] = 'normal';
+                    $status['icon'] = 'exclamation-circle';
+                    $status['color'] = 'text-warning';
+                    $status['tooltip'] = "Late arrival, stayed full time";
+                } else {
+                    // Normal attendance - full day
+                    $status['check_out_status'] = 'normal';
+                    $status['icon'] = 'check-circle';
+                    $status['color'] = 'text-success';
+                    $status['tooltip'] = 'Present (full day)';
+                }
+            }
+        }
+
+        return $status;
+    }
+
+    /**
+     * Get icon class and color based on attendance status
+     *
+     * @param array $status
+     * @return array [icon, color, tooltip]
+     */
+    private function getIconForStatus($status)
+    {
+        // Priority: half_day > late > early_leave > early > present
+        if ($status['check_out_status'] == 'half_day') {
+            return ['star-half-alt', 'text-red', $status['tooltip']];
+        }
+
+        if ($status['check_in_status'] == 'late') {
+            return ['exclamation-circle', 'text-warning', $status['tooltip']];
+        }
+
+        if ($status['check_out_status'] == 'early_leave') {
+            return ['sign-out', 'text-orange', $status['tooltip']];
+        }
+
+        if ($status['check_in_status'] == 'early') {
+            return ['arrow-circle-left', 'text-info', $status['tooltip']];
+        }
+
+        // Default present
+        return ['check', 'text-success', $status['tooltip']];
+    }
+
+    /**
+     * Build attendance HTML with icon
+     *
+     * @param Attendance $attendance
+     * @param array $iconData [icon, color, tooltip]
+     * @return string
+     */
+    private function buildAttendanceHtml($attendance, $iconData)
+    {
+        [$icon, $color, $tooltip] = $iconData;
+
+        $shiftName = $attendance->employee_shift_id && $attendance->shift
+            ? $attendance->shift->shift_name
+            : $tooltip;
+
+        return "<a href=\"javascript:;\" 
+                    data-toggle=\"tooltip\" 
+                    data-original-title=\"{$shiftName}\" 
+                    class=\"view-attendance\" 
+                    data-attendance-id=\"{$attendance->id}\">
+                    <i class=\"fa fa-{$icon} {$color}\"></i>
+                </a>";
     }
 }
