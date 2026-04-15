@@ -1402,6 +1402,8 @@ return array(
         'clockedIn' => 'Clocked In',
         'extraDays' => 'Extra Working Days',
         'late' => 'Late',
+        'early' => 'Early',
+        'earlyLeave' => 'Early Leave',
         'clock_out' => 'Clock Out',
         'clockedOut' => 'Clocked Out',
         'halfDay' => 'Half Day',

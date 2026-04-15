@@ -155,21 +155,16 @@
         <x-cards.data class="mt-3">
             <div class="row">
                 <div class="col-md-12">
-                    <span class="f-w-500 mr-1">@lang('app.note'):</span> <i class="fa fa-star text-warning"></i> <i
-                        class="fa fa-arrow-right text-lightest f-11 mx-1"></i> @lang('app.menu.holiday') &nbsp;|&nbsp;<i
-                        class="fa fa-calendar-week text-red"></i> <i class="fa fa-arrow-right text-lightest f-11 mx-1"></i>
-                    @lang('modules.attendance.dayOff') &nbsp;|&nbsp;
-                    <i class="fa fa-check text-success"></i> <i class="fa fa-arrow-right text-lightest f-11 mx-1"></i>
-                    @lang('modules.attendance.present') &nbsp;|&nbsp; <i class="fa fa-star-half-alt text-red"></i> <i
-                        class="fa fa-arrow-right text-lightest f-11 mx-1"></i>
-                    @lang('modules.attendance.halfDay') &nbsp;|&nbsp; <i class="fa fa-exclamation-circle text-warning"></i> <i
-                        class="fa fa-arrow-right text-lightest f-11 mx-1"></i>
-                    @lang('modules.attendance.late') &nbsp;|&nbsp; <i class="fa fa-times text-lightest"></i> <i
-                        class="fa fa-arrow-right text-lightest f-11 mx-1"></i>
-                    @lang('modules.attendance.absent') &nbsp;|&nbsp; <i class="fa fa-plane-departure text-danger"></i> <i
-                        class="fa fa-arrow-right text-lightest f-11 mx-1"></i>
-                    @lang('modules.attendance.leave')
-
+                    <span class="f-w-500 mr-1">@lang('app.note'):</span> 
+                    <i class="fa fa-star text-warning"></i> @lang('app.menu.holiday') &nbsp;|&nbsp;
+                    <i class="fa fa-calendar-week text-red"></i> @lang('modules.attendance.dayOff') &nbsp;|&nbsp;
+                    <i class="fa fa-check text-success"></i> @lang('modules.attendance.present') &nbsp;|&nbsp;
+                    <i class="fa fa-arrow-circle-left text-info"></i> @lang('modules.attendance.early') &nbsp;|&nbsp;
+                    <i class="fa fa-exclamation-circle text-warning"></i> @lang('modules.attendance.late') &nbsp;|&nbsp;
+                    <i class="fa fa-sign-out text-orange"></i> @lang('modules.attendance.earlyLeave') &nbsp;|&nbsp;
+                    <i class="fa fa-star-half-alt text-red"></i> @lang('modules.attendance.halfDay') &nbsp;|&nbsp;
+                    <i class="fa fa-plane-departure text-danger"></i> @lang('modules.attendance.leave') &nbsp;|&nbsp;
+                    <i class="fa fa-times text-lightest"></i> @lang('modules.attendance.absent')
                 </div>
             </div>
 

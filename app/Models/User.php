@@ -412,6 +412,11 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         return $this->hasMany(Attendance::class, 'user_id');
     }
 
+    public function attendanceRawLogs(): HasMany
+    {
+        return $this->hasMany(\App\Models\AttendanceRawLog::class, 'user_id');
+    }
+
     public function employee(): HasMany
     {
         return $this->hasMany(EmployeeDetails::class, 'user_id');
@@ -1231,4 +1236,64 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         return $this->belongsToMany(TicketReply::class, 'ticket_reply_users', 'user_id', 'ticket_reply_id');
     }
 
+    /**
+     * Get expected duty hours in minutes
+     */
+    public function getExpectedDutyMinutesAttribute()
+    {
+        if ($this->check_in_time && $this->check_out_time) {
+            try {
+                $checkIn = \Carbon\Carbon::createFromFormat('H:i:s', $this->check_in_time);
+                $checkOut = \Carbon\Carbon::createFromFormat('H:i:s', $this->check_out_time);
+                
+                // Handle overnight shifts
+                if ($checkOut->lt($checkIn)) {
+                    $checkOut->addDay();
+                }
+                
+                return $checkIn->diffInMinutes($checkOut);
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get formatted check-in time
+     */
+    public function getFormattedCheckInTimeAttribute()
+    {
+        try {
+            return $this->check_in_time ? \Carbon\Carbon::createFromFormat('H:i:s', $this->check_in_time)->format('H:i') : '--:--';
+        } catch (\Exception $e) {
+            return '--:--';
+        }
+    }
+
+    /**
+     * Get formatted check-out time
+     */
+    public function getFormattedCheckOutTimeAttribute()
+    {
+        try {
+            return $this->check_out_time ? \Carbon\Carbon::createFromFormat('H:i:s', $this->check_out_time)->format('H:i') : '--:--';
+        } catch (\Exception $e) {
+            return '--:--';
+        }
+    }
+
+    /**
+     * Get formatted duty hours
+     */
+    public function getFormattedDutyTimeAttribute()
+    {
+        if ($this->expected_duty_minutes) {
+            $minutes = $this->expected_duty_minutes;
+            $hours = floor($minutes / 60);
+            $mins = $minutes % 60;
+            return sprintf('%dh %dm', $hours, $mins);
+        }
+        return '--';
+    }
 }

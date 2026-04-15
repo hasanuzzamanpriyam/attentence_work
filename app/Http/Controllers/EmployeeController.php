@@ -249,6 +249,10 @@ class EmployeeController extends AccountBaseController
                 $user->telegram_user_id = $request->telegram_user_id;
             }
 
+            $user->duty_time = $request->duty_time;
+            $user->check_in_time = $request->check_in_time;
+            $user->check_out_time = $request->check_out_time;
+
             $user->save();
 
             $tags = json_decode($request->tags);
@@ -514,6 +518,10 @@ class EmployeeController extends AccountBaseController
         if ($request->has('telegram_user_id')) {
             $user->telegram_user_id = $request->telegram_user_id;
         }
+
+        $user->duty_time = $request->duty_time;
+        $user->check_in_time = $request->check_in_time;
+        $user->check_out_time = $request->check_out_time;
 
         $user->save();
 
