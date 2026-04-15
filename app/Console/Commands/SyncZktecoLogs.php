@@ -131,7 +131,20 @@ class SyncZktecoLogs extends Command
                         'login' => 'enable',
                         'email_notifications' => 0,
                     ]);
-                    
+
+                    // Assign employee role
+                    $employeeRole = \App\Models\Role::where('name', 'employee')->first();
+                    if ($employeeRole) {
+                        $user->attachRole($employeeRole);
+                        $user->assignUserRolePermission($employeeRole->id);
+                    }
+
+                    // Create employee details record
+                    $employeeDetails = new \App\Models\EmployeeDetails();
+                    $employeeDetails->user_id = $user->id;
+                    $employeeDetails->employee_id = (string) $user->id;
+                    $employeeDetails->save();
+
                     $this->info("  ✓ Auto-created user '{$userName}' (UID: {$lookupId})");
                     $autoCreatedCount++;
                 }
@@ -195,7 +208,7 @@ class SyncZktecoLogs extends Command
                     if (!$user) {
                         $userName = "Device User {$log['uid']}";
                         $userEmail = "device_uid_{$log['uid']}@auto.local";
-                        
+
                         $user = \App\Models\User::create([
                             'name' => $userName,
                             'email' => $userEmail,
@@ -206,7 +219,20 @@ class SyncZktecoLogs extends Command
                             'login' => 'enable',
                             'email_notifications' => 0,
                         ]);
-                        
+
+                        // Assign employee role
+                        $employeeRole = \App\Models\Role::where('name', 'employee')->first();
+                        if ($employeeRole) {
+                            $user->attachRole($employeeRole);
+                            $user->assignUserRolePermission($employeeRole->id);
+                        }
+
+                        // Create employee details record
+                        $employeeDetails = new \App\Models\EmployeeDetails();
+                        $employeeDetails->user_id = $user->id;
+                        $employeeDetails->employee_id = (string) $user->id;
+                        $employeeDetails->save();
+
                         $this->info("  ✓ Auto-created user from attendance log: '{$userName}'");
                     }
 
