@@ -17,13 +17,22 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-end mb-3">
-            <form action="{{ route('device-logs.sync') }}" method="POST" id="syncForm">
-                @csrf
-                <button type="submit" class="btn btn-primary d-flex align-items-center" id="syncBtn">
-                    <i class="fa fa-sync mr-2"></i> Sync Device Now
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center">
+                <div id="autoSyncStatus" class="mr-3">
+                    <span class="badge badge-info">
+                        <i class="fa fa-clock-o"></i> Auto-sync: Active
+                    </span>
+                </div>
+                <div id="lastSyncTime" class="text-muted small">
+                    <i class="fa fa-refresh"></i> Last sync: Just now
+                </div>
+            </div>
+            <div class="text-right">
+                <button id="manualRefreshBtn" class="btn btn-sm btn-outline-primary" title="Refresh data now">
+                    <i class="fa fa-refresh mr-1"></i> Refresh Now
                 </button>
-            </form>
+            </div>
         </div>
 
         <!-- LATEST ACTIVITY PANEL -->
@@ -73,6 +82,7 @@
 
         <div class="row">
             <div class="col-sm-12">
+                <div id="deviceLogsContent">
                 @forelse ($processedData as $userData)
                     <x-cards.data class="mb-4" data-user-id="{{ $userData['user']->id }}">
                         <div class="card-header">
@@ -155,7 +165,7 @@
                                     <tfoot>
                                         <tr class="table-info font-weight-bold">
                                             <td>
-                                                <strong><i class="fa fa-calculator mr-1"></i>TOTAL</strong>
+                                                <strong style="color: black;"><i class="fa fa-calculator mr-1"></i>TOTAL</strong>
                                             </td>
                                             <td>
                                                 <span class="badge badge-primary">{{ $userData['total_worked_days'] }} days</span>
@@ -241,6 +251,7 @@
                         @endforeach
                     </div>
                 @endif
+                </div>
             </div>
         </div>
     </div>
@@ -254,70 +265,254 @@
             // Check device status on page load
             checkDeviceStatus();
 
-            // Handle sync form submission
-            $('#syncForm').on('submit', function(e) {
-                e.preventDefault();
-
-                var btn = $('#syncBtn');
-                var originalText = btn.html();
-
-                // Disable button and show loading state
-                btn.prop('disabled', true);
-                btn.html('<i class="fa fa-spinner fa-spin mr-2"></i> Syncing...');
-
-                performSync(function(response) {
-                    if (response.status === 'success') {
-                        showNotification('success', response.message);
-                        // Refresh device status after sync
-                        setTimeout(() => checkDeviceStatus(), 2000);
-                    } else {
-                        showNotification('error', response.message);
-                    }
-                }, function(xhr) {
-                    var message = 'An error occurred during sync.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        message = xhr.responseJSON.message;
-                    }
-                    showNotification('error', message);
-                }, function() {
-                    // Re-enable button and restore original text
-                    btn.prop('disabled', false);
-                    btn.html(originalText);
-                });
-            });
-
             // Auto-sync every 30 seconds
-            setInterval(function() {
+            let autoSyncInterval = setInterval(function() {
                 performAutoSync();
             }, 30 * 1000); // 30 seconds
 
-            // Function to perform sync
-            function performSync(successCallback, errorCallback, completeCallback) {
+            // Manual refresh button
+            $('#manualRefreshBtn').on('click', function() {
+                var btn = $(this);
+                btn.prop('disabled', true);
+                btn.html('<i class="fa fa-spinner fa-spin mr-1"></i> Refreshing...');
+                
+                performAutoSync(function() {
+                    btn.prop('disabled', false);
+                    btn.html('<i class="fa fa-refresh mr-1"></i> Refresh Now');
+                });
+            });
+
+            // Function to perform auto-sync and refresh data
+            function performAutoSync(callback) {
+                updateSyncStatus('syncing');
+                
+                // First, sync the device
                 $.ajax({
                     url: '{{ route("device-logs.sync") }}',
                     type: 'POST',
                     data: {
                         '_token': '{{ csrf_token() }}'
                     },
-                    success: successCallback,
-                    error: errorCallback,
-                    complete: completeCallback
+                    success: function(syncResponse) {
+                        console.log('Auto-sync successful');
+                        
+                        // After sync, refresh the data
+                        refreshPageData(function() {
+                            updateSyncStatus('success');
+                            if (callback) callback();
+                        }, function() {
+                            updateSyncStatus('error');
+                            if (callback) callback();
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Auto-sync failed:', xhr);
+                        // Still try to refresh data even if sync fails
+                        refreshPageData(function() {
+                            updateSyncStatus('success');
+                            if (callback) callback();
+                        }, function() {
+                            updateSyncStatus('error');
+                            if (callback) callback();
+                        });
+                    }
                 });
             }
 
-            // Function to perform auto-sync (silent)
-            function performAutoSync() {
-                performSync(function(response) {
-                    if (response.status === 'success') {
-                        console.log('Auto-sync successful:', response.message);
-                        // Refresh device status after auto-sync
-                        setTimeout(() => checkDeviceStatus(), 2000);
+            // Function to refresh page data via AJAX
+            function refreshPageData(successCallback, errorCallback) {
+                $.ajax({
+                    url: '{{ route("device-logs.refresh") }}',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            updatePageContent(response.data);
+                            updateLastSyncTime();
+                            if (successCallback) successCallback();
+                        } else {
+                            console.error('Refresh failed:', response.message);
+                            if (errorCallback) errorCallback();
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to refresh data:', xhr);
+                        if (errorCallback) errorCallback();
                     }
-                }, function(xhr) {
-                    console.error('Auto-sync failed:', xhr);
-                }, function() {
-                    // No UI changes for auto-sync
                 });
+            }
+
+            // Function to update page content with new data
+            function updatePageContent(data) {
+                // Build new HTML for processed data
+                let newHtml = '';
+                
+                if (data.processedData && data.processedData.length > 0) {
+                    data.processedData.forEach(function(userData) {
+                        newHtml += buildUserCardHtml(userData);
+                    });
+                } else {
+                    newHtml = '<div class="text-center py-4">No device logs found. Please sync with the device.</div>';
+                }
+
+                // Add unmapped logs section
+                if (data.unmappedLogs && Object.keys(data.unmappedLogs).length > 0) {
+                    newHtml += '<div class="mt-4"><h5 class="text-warning mb-3"><i class="fa fa-exclamation-triangle"></i> Unmapped Device Logs</h5>';
+                    newHtml += '<p class="text-muted small">These logs are from the device but the users are not registered in the system. Please map the device user IDs to system users.</p>';
+                    
+                    Object.keys(data.unmappedLogs).forEach(function(deviceUserId) {
+                        const logs = data.unmappedLogs[deviceUserId];
+                        newHtml += buildUnmappedLogsHtml(deviceUserId, logs);
+                    });
+                    
+                    newHtml += '</div>';
+                }
+
+                // Update the content container with fade effect
+                const contentDiv = $('#deviceLogsContent');
+                contentDiv.css('opacity', '0.5');
+                
+                setTimeout(function() {
+                    contentDiv.html(newHtml);
+                    contentDiv.css('opacity', '1');
+                    
+                    // Add brief highlight animation to show update
+                    contentDiv.addClass('bg-light');
+                    setTimeout(function() {
+                        contentDiv.removeClass('bg-light');
+                    }, 1000);
+                }, 300);
+            }
+
+            // Helper function to build user card HTML
+            function buildUserCardHtml(userData) {
+                let html = '<div class="card mb-4" data-user-id="' + userData.user.id + '">';
+                html += '<div class="card-header">';
+                html += '<h5 class="card-title mb-0">';
+                html += '<div class="media align-items-center">';
+                html += '<img src="' + (userData.user.image_url || '{{ asset("img/default-avatar.png") }}') + '" class="rounded-circle mr-2" width="40" alt="' + userData.user.name + '">';
+                html += '<div class="media-body">';
+                html += '<h5 class="mb-0">' + userData.user.name;
+                html += '<small class="text-muted ml-2">(ID: ' + userData.user.id;
+                if (userData.user.device_user_id) {
+                    html += ' | Device ID: ' + userData.user.device_user_id;
+                }
+                html += ')</small></h5>';
+                html += '<p class="mb-0 text-muted">' + userData.user.email + '</p>';
+                html += '</div></div></h5>';
+                html += '<div class="card-header-actions">';
+                html += '<span class="badge badge-primary">Worked Days: ' + userData.total_worked_days + '</span> ';
+                html += '<span class="badge badge-info">Total Hours: ' + userData.total_duration_hours + '</span> ';
+                html += '<span class="badge badge-warning">Absent Days: ' + userData.absent_days + '</span>';
+                html += '</div></div>';
+                html += '<div class="card-body"><div class="table-responsive">';
+                html += '<table class="table table-bordered table-hover">';
+                html += '<thead class="thead-light"><tr><th>Date</th><th>Clock-In</th><th>Clock-Out</th><th>Duration</th><th>Status</th></tr></thead>';
+                html += '<tbody>';
+
+                if (userData.daily_logs && userData.daily_logs.length > 0) {
+                    userData.daily_logs.forEach(function(day) {
+                        html += '<tr>';
+                        html += '<td>' + formatDate(day.date) + '</td>';
+                        html += '<td><span class="text-success font-weight-bold" title="' + day.clock_in_full + '"><i class="fa fa-sign-in mr-1"></i>' + day.clock_in + '</span></td>';
+                        
+                        if (day.is_completed) {
+                            html += '<td><span class="text-danger font-weight-bold" title="' + day.clock_out_full + '"><i class="fa fa-sign-out mr-1"></i>' + day.clock_out + '</span></td>';
+                        } else {
+                            html += '<td><span class="text-muted" title="' + (day.clock_out_full || '--:--:--') + '"><i class="fa fa-hourglass-start mr-1"></i>' + day.clock_out + '</span></td>';
+                        }
+                        
+                        if (day.is_completed) {
+                            html += '<td><span class="badge badge-info">' + day.duration_formatted + '</span></td>';
+                            html += '<td><span class="badge badge-success"><i class="fa fa-check-circle mr-1"></i>' + day.status + '</span></td>';
+                        } else {
+                            html += '<td><span class="badge badge-secondary">--</span></td>';
+                            html += '<td><span class="badge badge-warning"><i class="fa fa-spinner fa-spin mr-1"></i>' + day.status + '</span></td>';
+                        }
+                        html += '</tr>';
+                    });
+                } else {
+                    html += '<tr><td colspan="5" class="text-center py-4">No logs for this user.</td></tr>';
+                }
+
+                html += '</tbody>';
+
+                if (userData.daily_logs && userData.daily_logs.length > 0) {
+                    html += '<tfoot><tr class="table-info font-weight-bold">';
+                    html += '<td><strong><i class="fa fa-calculator mr-1"></i>TOTAL</strong></td>';
+                    html += '<td><span class="badge badge-primary">' + userData.total_worked_days + ' days</span></td>';
+                    html += '<td><span class="badge badge-secondary">--</span></td>';
+                    html += '<td><span class="badge badge-success font-weight-bold">' + userData.total_duration_text + ' (' + userData.total_duration_hours + ' hrs)</span></td>';
+                    
+                    if (userData.total_worked_days > 0) {
+                        const avg = (userData.total_duration_hours / userData.total_worked_days).toFixed(2);
+                        html += '<td><span class="badge badge-info">' + avg + ' hrs/day avg</span></td>';
+                    } else {
+                        html += '<td><span class="badge badge-secondary">N/A</span></td>';
+                    }
+                    html += '</tr></tfoot>';
+                }
+
+                html += '</table></div></div></div>';
+                return html;
+            }
+
+            // Helper function to build unmapped logs HTML
+            function buildUnmappedLogsHtml(deviceUserId, logs) {
+                let html = '<div class="card mb-4">';
+                html += '<div class="card-header">';
+                html += '<h5 class="card-title mb-0 text-warning">Device User ID: ' + deviceUserId + '</h5>';
+                html += '<div class="card-header-actions">';
+                html += '<span class="badge badge-warning">' + logs.count + ' log entries</span>';
+                html += '</div></div>';
+                html += '<div class="card-body"><div class="table-responsive">';
+                html += '<table class="table table-bordered table-hover">';
+                html += '<thead class="thead-light"><tr><th>Date</th><th>Time</th><th>Type</th></tr></thead>';
+                html += '<tbody>';
+
+                logs.logs.forEach(function(log) {
+                    html += '<tr>';
+                    html += '<td>' + log.date + '</td>';
+                    html += '<td>' + log.time + '</td>';
+                    
+                    if (log.type == 1) {
+                        html += '<td><span class="badge badge-success"><i class="fa fa-sign-in mr-1"></i>' + log.type_label + '</span></td>';
+                    } else if (log.type == 2) {
+                        html += '<td><span class="badge badge-danger"><i class="fa fa-sign-out mr-1"></i>' + log.type_label + '</span></td>';
+                    } else {
+                        html += '<td><span class="badge badge-secondary"><i class="fa fa-question-circle mr-1"></i>' + log.type_label + '</span></td>';
+                    }
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div></div></div>';
+                return html;
+            }
+
+            // Helper function to format date
+            function formatDate(dateStr) {
+                const date = new Date(dateStr);
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return date.getDate().toString().padStart(2, '0') + ' ' + months[date.getMonth()] + ' ' + date.getFullYear();
+            }
+
+            // Function to update sync status indicator
+            function updateSyncStatus(status) {
+                const statusDiv = $('#autoSyncStatus');
+                
+                if (status === 'syncing') {
+                    statusDiv.html('<span class="badge badge-warning"><i class="fa fa-spinner fa-spin"></i> Syncing...</span>');
+                } else if (status === 'success') {
+                    statusDiv.html('<span class="badge badge-success"><i class="fa fa-check-circle"></i> Synced</span>');
+                } else if (status === 'error') {
+                    statusDiv.html('<span class="badge badge-danger"><i class="fa fa-exclamation-circle"></i> Sync Failed</span>');
+                }
+            }
+
+            // Function to update last sync time
+            function updateLastSyncTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString();
+                $('#lastSyncTime').html('<i class="fa fa-refresh"></i> Last sync: ' + timeString);
             }
 
             // Function to check device status
@@ -713,6 +908,9 @@
             $(window).on('beforeunload', function() {
                 if (latestActivityInterval) {
                     clearInterval(latestActivityInterval);
+                }
+                if (autoSyncInterval) {
+                    clearInterval(autoSyncInterval);
                 }
             });
         });

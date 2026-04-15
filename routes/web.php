@@ -193,6 +193,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::get('device-logs/status', [\App\Http\Controllers\DeviceLogController::class, 'checkDeviceStatus'])->name('device-logs.status');
     Route::get('device-logs/latest', [\App\Http\Controllers\DeviceLogController::class, 'getLatestPunch'])->name('device-logs.latest');
     Route::get('device-logs/user/{userId}', [\App\Http\Controllers\DeviceLogController::class, 'getUserDetail'])->name('device-logs.user-detail');
+    Route::get('device-logs/refresh', [\App\Http\Controllers\DeviceLogController::class, 'refreshData'])->name('device-logs.refresh');
     Route::resource('device-logs', \App\Http\Controllers\DeviceLogController::class)->except(['sync']);
 
     // Shifts
