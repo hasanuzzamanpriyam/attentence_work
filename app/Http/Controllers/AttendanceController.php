@@ -284,21 +284,20 @@ class AttendanceController extends AccountBaseController
 
                     $iconData = $this->getIconForStatus($status);
                     $iconClassKey = $iconData[0] . ' ' . $iconData[1];
-                    
-                    // Enhanced tooltip showing both device time and expected time
-                    if ($biometricCheckIn && $expectedCheckIn) {
-                        $tooltipTitle = "Device: " . Carbon::parse($biometricCheckIn)->format('H:i') . 
-                                       " | Expected: " . $expectedCheckIn->format('H:i') . 
-                                       " - " . $iconData[2];
-                    } else {
-                        $tooltipTitle = $attendance->employee_shift_id && $attendance->shift
-                            ? $attendance->shift->shift_name . ' - ' . $iconData[2]
-                            : $iconData[2];
-                    }
+
+                    // Show status-based tooltip (Late, Present, Early, etc.)
+                    $tooltipTitle = $iconData[2];
                 } else {
                     // Fallback to old logic if no duty times set
                     $iconClassKey = $isHalfDay[$employee->id][$startOfDayKey] ? 'star-half-alt text-red' : ($isLate[$employee->id][$startOfDayKey] ? 'exclamation-circle text-warning' : 'check text-success');
-                    $tooltipTitle = $attendance->employee_shift_id && $attendance->shift ? $attendance->shift->shift_name : __('app.present');
+                    
+                    if ($isHalfDay[$employee->id][$startOfDayKey]) {
+                        $tooltipTitle = 'Half day';
+                    } elseif ($isLate[$employee->id][$startOfDayKey]) {
+                        $tooltipTitle = 'Late';
+                    } else {
+                        $tooltipTitle = 'Present';
+                    }
                 }
 
                 // Construct the attendance HTML
@@ -2336,7 +2335,7 @@ class AttendanceController extends AccountBaseController
                     $status['check_out_status'] = 'early_leave';
                     $status['icon'] = 'sign-out';
                     $status['color'] = 'text-orange';
-                    $status['tooltip'] = "Early by " . abs($checkoutDiff) . " min";
+                    $status['tooltip'] = "Early leave (worked " . round($workedMinutes/60, 1) . "h)";
                 }
             } else {
                 // Checked out on time or late, or completed full duty
@@ -2351,7 +2350,7 @@ class AttendanceController extends AccountBaseController
                     $status['check_out_status'] = 'normal';
                     $status['icon'] = 'check-circle';
                     $status['color'] = 'text-success';
-                    $status['tooltip'] = 'Present (full day)';
+                    $status['tooltip'] = 'Present (on time)';
                 }
             }
         }
