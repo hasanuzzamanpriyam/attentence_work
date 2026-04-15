@@ -12,12 +12,12 @@
             <p class="mb-0 pr-2 f-14 text-dark-grey d-flex align-items-center">@lang('app.employee')</p>
             <div class="select-status">
                 <select class="form-control select-picker" name="employee" id="employee" data-live-search="true"
-                        data-size="8">
+                    data-size="8">
                     @if ($employees->count() > 1 || in_array('admin', user_roles()))
                         <option value="all">@lang('app.all')</option>
                     @endif
                     @foreach ($employees as $employee)
-                        <x-user-option :user="$employee"/>
+                        <x-user-option :user="$employee" />
                     @endforeach
                 </select>
             </div>
@@ -50,7 +50,7 @@
                         </span>
                     </div>
                     <input type="text" class="form-control f-14 p-1 border-additional-grey" id="search-text-field"
-                           placeholder="@lang('app.startTyping')">
+                        placeholder="@lang('app.startTyping')">
                 </div>
             </form>
         </div>
@@ -70,8 +70,7 @@
                 <label class="f-14 text-dark-grey mb-12 " for="usr">@lang('app.department')</label>
                 <div class="select-filter mb-4">
                     <div class="select-others">
-                        <select class="form-control select-picker" name="department" data-container="body"
-                                id="department">
+                        <select class="form-control select-picker" name="department" data-container="body" id="department">
                             <option value="all">@lang('app.all')</option>
                             @foreach ($departments as $department)
                                 <option value="{{ $department->id }}">{{ $department->team_name }}</option>
@@ -85,13 +84,13 @@
                 <label class="f-14 text-dark-grey mb-12 " for="usr">@lang('modules.employees.reportingTo')</label>
                 <div class="select-filter mb-4">
                     <div class="select-others">
-                        <select class="form-control select-picker" name="reporting_employee" id="reporting_employee" data-live-search="true"
-                                data-size="8">
+                        <select class="form-control select-picker" name="reporting_employee" id="reporting_employee"
+                            data-live-search="true" data-size="8">
                             @if ($employees->count() > 1 || in_array('admin', user_roles()))
                                 <option value="all">@lang('app.all')</option>
                             @endif
                             @foreach ($employees as $employee)
-                                <x-user-option :user="$employee"/>
+                                <x-user-option :user="$employee" />
                             @endforeach
                         </select>
                     </div>
@@ -99,14 +98,13 @@
             </div>
 
             <div class="more-filter-items">
-                <label class="f-14 text-dark-grey mb-12 "
-                       for="usr">@lang('modules.employees.role')</label>
+                <label class="f-14 text-dark-grey mb-12 " for="usr">@lang('modules.employees.role')</label>
                 <div class="select-filter mb-4">
                     <div class="select-others">
                         <select class="form-control select-picker" name="role" id="role" data-container="body">
                             <option value="all">@lang('app.all')</option>
                             @foreach ($roles as $role)
-                                    <option value="{{ $role->id }}">{{ $role->display_name }}</option>
+                                <option value="{{ $role->id }}">{{ $role->display_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -144,7 +142,8 @@
                 <label class="f-14 text-dark-grey mb-12 " for="usr">@lang('modules.employees.employmentType')</label>
                 <div class="select-filter mb-4">
                     <div class="select-others">
-                        <select class="form-control select-picker" name="employmentType" id="employmentType" data-container="body">
+                        <select class="form-control select-picker" name="employmentType" id="employmentType"
+                            data-container="body">
                             <option value="all">@lang('app.all')</option>
                             <option value="probation">@lang('app.onProbation')</option>
                             <option value="internship">@lang('app.onInternship')</option>
@@ -177,9 +176,9 @@
 
             <div id="table-actions" class="d-block d-lg-flex align-items-center">
                 @if ($addEmployeePermission == 'all')
-                    <x-forms.link-primary :link="route('employees.create')" class="mr-3 openRightModal" icon="plus">
+                    {{-- <x-forms.link-primary :link="route('employees.create')" class="mr-3 openRightModal" icon="plus">
                         @lang('app.addEmployee')
-                    </x-forms.link-primary>
+                    </x-forms.link-primary> --}}
 
                     <x-forms.button-secondary class="mr-3 invite-member mb-2 mb-lg-0" icon="plus">
                         @lang('app.inviteEmployee')
@@ -187,8 +186,8 @@
                 @endif
 
                 @if ($addEmployeePermission == 'all')
-                    <x-forms.link-secondary :link="route('employees.import')" class="mr-3 openRightModal mb-2 mb-lg-0 d-none d-lg-block"
-                                            icon="file-upload">
+                    <x-forms.link-secondary :link="route('employees.import')"
+                        class="mr-3 openRightModal mb-2 mb-lg-0 d-none d-lg-block" icon="file-upload">
                         @lang('app.importExcel')
                     </x-forms.link-secondary>
                 @endif
@@ -234,14 +233,14 @@
         var lastStartDate = null;
         var lastEndDate = null;
 
-        @if(request('startDate') != '' && request('endDate') != '' )
+        @if(request('startDate') != '' && request('endDate') != '')
             startDate = '{{ request("startDate") }}';
-        endDate = '{{ request("endDate") }}';
+            endDate = '{{ request("endDate") }}';
         @endif
 
-            @if(request('lastStartDate') !=='' && request('lastEndDate') !=='' )
+        @if(request('lastStartDate') !== '' && request('lastEndDate') !== '')
             lastStartDate = '{{ request("lastStartDate") }}';
-        lastEndDate = '{{ request("lastEndDate") }}';
+            lastEndDate = '{{ request("lastEndDate") }}';
         @endif
 
         $('#employees-table').on('preXhr.dt', function (e, settings, data) {
@@ -296,7 +295,7 @@
                     $('#reset-filters').removeClass('d-none');
                 } else if ($('#department').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
-                }else if ($('#employmentType').val() != "all") {
+                } else if ($('#employmentType').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                 } else {
                     $('#reset-filters').addClass('d-none');

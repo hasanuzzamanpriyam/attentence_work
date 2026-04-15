@@ -211,6 +211,11 @@
 
                         </x-forms.select>
                     </div>
+                    <div class="col-lg-3 col-md-6">
+                        <x-forms.text fieldId="device_user_id" :fieldLabel="__('Device User ID')" fieldName="device_user_id"
+                            fieldRequired="true" :fieldPlaceholder="__('Device User ID')">
+                        </x-forms.text>
+                    </div>
                     <div class="col-md-12">
                         <div class="my-3 form-group">
                             <x-forms.textarea class="mr-0 mr-lg-2 mr-md-2" :fieldLabel="__('app.address')" fieldName="address"
