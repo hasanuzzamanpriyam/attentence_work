@@ -255,6 +255,176 @@ class DeviceLogController extends AccountBaseController
     }
 
     /**
+     * Refresh data for AJAX auto-sync
+     * Returns updated logs data without rendering the full view
+     */
+    public function refreshData()
+    {
+        try {
+            // Get today's attendance summary using the service
+            $dailyAttendance = $this->attendanceService->getDailyAttendanceSummary();
+
+            // Get raw logs for display (limit for performance)
+            $rawLogs = AttendanceRawLog::with('user:id,name,email')
+                ->orderBy('timestamp', 'desc')
+                ->limit(1000)
+                ->get();
+
+            // Get attendance settings for working days
+            $attendanceSetting = AttendanceSetting::where('company_id', company() ? company()->id : 1)->first();
+            $workingDays = $attendanceSetting ? explode(',', $attendanceSetting->office_open_days) : [1, 2, 3, 4, 5]; // Default Mon-Fri
+
+            // Current month calculation for compatibility with existing view
+            $currentMonth = now()->month;
+            $currentYear = now()->year;
+            $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $currentMonth, $currentYear);
+
+            // Calculate total working days in current month
+            $totalWorkingDays = 0;
+            for ($day = 1; $day <= $daysInMonth; $day++) {
+                $date = \Carbon\Carbon::create($currentYear, $currentMonth, $day);
+                if (in_array($date->dayOfWeekIso, $workingDays)) {
+                    $totalWorkingDays++;
+                }
+            }
+
+            // Group raw logs by user for the view
+            $userLogs = $rawLogs->groupBy(function ($log) {
+                return $log->user_id ?: 'unmapped_' . $log->device_id;
+            });
+
+            $processedData = [];
+            $unmappedLogs = [];
+
+            foreach ($userLogs as $groupKey => $userLogCollection) {
+                // Check if this is a mapped user group or unmapped
+                if (str_starts_with($groupKey, 'unmapped_')) {
+                    $deviceUserId = str_replace('unmapped_', '', $groupKey);
+                    $unmappedLogs[$deviceUserId] = $userLogCollection;
+                    continue;
+                }
+
+                $user = $userLogCollection->first()->user;
+                if (!$user) continue;
+
+                // Group by date
+                $dateGroups = $userLogCollection->groupBy(function ($log) {
+                    return $log->timestamp->format('Y-m-d');
+                });
+
+                $dailyData = [];
+                $totalWorkedDays = 0;
+                $totalDuration = 0;
+
+                foreach ($dateGroups as $date => $dayLogs) {
+                    // Only count if in current month
+                    $logDate = \Carbon\Carbon::parse($date);
+                    if ($logDate->month != $currentMonth || $logDate->year != $currentYear) continue;
+
+                    // Sort by timestamp
+                    $dayLogs = $dayLogs->sortBy('timestamp')->values();
+
+                    // Pair punches: 1st=IN, 2nd=OUT, 3rd=IN, 4th=OUT, etc.
+                    $pairs = [];
+                    $totalPairs = ceil($dayLogs->count() / 2);
+
+                    for ($i = 0; $i < $totalPairs; $i++) {
+                        $clockInIndex = $i * 2;
+                        $clockOutIndex = $clockInIndex + 1;
+
+                        $clockIn = $dayLogs[$clockInIndex];
+                        $clockOut = isset($dayLogs[$clockOutIndex]) ? $dayLogs[$clockOutIndex] : null;
+
+                        $duration = 0;
+                        $isCompleted = false;
+
+                        if ($clockOut) {
+                            $duration = $clockOut->timestamp->diffInMinutes($clockIn->timestamp);
+                            $isCompleted = true;
+                            $totalDuration += $duration;
+                        }
+
+                        $hours = intdiv($duration, 60);
+                        $minutes = $duration % 60;
+                        $durationFormatted = $duration > 0 ? ($hours > 0 ? $hours . 'h ' : '') . sprintf('%02dm', $minutes) : '--';
+
+                        $pairs[] = [
+                            'date' => $date,
+                            'clock_in' => $clockIn->timestamp->format('H:i'),
+                            'clock_in_full' => $clockIn->timestamp->format('H:i:s'),
+                            'clock_out' => $clockOut ? $clockOut->timestamp->format('H:i') : '--:--',
+                            'clock_out_full' => $clockOut ? $clockOut->timestamp->format('H:i:s') : null,
+                            'duration_minutes' => $duration,
+                            'duration_hours' => $duration > 0 ? round($duration / 60, 2) : '--',
+                            'duration_formatted' => $durationFormatted,
+                            'is_completed' => $isCompleted,
+                            'status' => $isCompleted ? 'Completed' : 'Still Working'
+                        ];
+                    }
+
+                    $dailyData = array_merge($dailyData, $pairs);
+                    $totalWorkedDays++;
+                }
+
+                $absentDays = $totalWorkingDays - $totalWorkedDays;
+
+                $totalHours = round($totalDuration / 60, 2);
+                $totalDurationText = $totalDuration > 0 ? intdiv($totalDuration, 60) . 'h ' . sprintf('%02dm', $totalDuration % 60) : '--';
+
+                $processedData[] = [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'image_url' => $user->image_url,
+                        'device_user_id' => $user->device_user_id,
+                    ],
+                    'daily_logs' => $dailyData,
+                    'total_worked_days' => $totalWorkedDays,
+                    'total_duration_hours' => $totalHours,
+                    'total_duration_text' => $totalDurationText,
+                    'absent_days' => max(0, $absentDays)
+                ];
+            }
+
+            // Format unmapped logs for AJAX response
+            $formattedUnmappedLogs = [];
+            foreach ($unmappedLogs as $deviceUserId => $logs) {
+                $formattedUnmappedLogs[$deviceUserId] = [
+                    'count' => $logs->count(),
+                    'logs' => $logs->sortBy('timestamp')->map(function ($log) {
+                        return [
+                            'id' => $log->id,
+                            'timestamp' => $log->timestamp->format('Y-m-d H:i:s'),
+                            'date' => $log->timestamp->format('d M Y'),
+                            'time' => $log->timestamp->format('H:i:s'),
+                            'type' => $log->type,
+                            'type_label' => $log->type == 1 ? 'Check In' : ($log->type == 2 ? 'Check Out' : 'Unknown (Type: ' . $log->type . ')'),
+                        ];
+                    })->values()
+                ];
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'processedData' => $processedData,
+                    'totalWorkingDays' => $totalWorkingDays,
+                    'unmappedLogs' => $formattedUnmappedLogs,
+                    'totalLogsCount' => $rawLogs->count(),
+                    'timestamp' => now()->format('Y-m-d H:i:s')
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Refresh Data Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An error occurred while refreshing data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Check device connectivity status
      */
     public function checkDeviceStatus()
