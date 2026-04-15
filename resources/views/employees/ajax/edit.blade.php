@@ -1,7 +1,7 @@
 @php
-$addDesignationPermission = user()->permission('add_designation');
-$changeEmployeeRolePermission = user()->permission('change_employee_role');
-$addDepartmentPermission = user()->permission('add_department');
+    $addDesignationPermission = user()->permission('add_designation');
+    $changeEmployeeRolePermission = user()->permission('change_employee_role');
+    $addDepartmentPermission = user()->permission('add_department');
 @endphp
 
 <link rel="stylesheet" href="{{ asset('vendor/css/tagify.css') }}">
@@ -127,9 +127,9 @@ $addDepartmentPermission = user()->permission('add_department');
                             search="true">
                             <option value="">--</option>
                             @foreach ($countries as $item)
-                                <option @if ($employee->country_id == $item->id) selected @endif data-mobile="{{ $employee->mobile }}" data-tokens="{{ $item->iso3 }}" data-iso="{{ $item->iso }}" data-phonecode="{{ $item->phonecode }}" data-content="<span
-                                class='flag-icon flag-icon-{{ strtolower($item->iso) }} flag-icon-squared'></span>
-                            {{ $item->nicename }}" value="{{ $item->id }}">{{ $item->nicename }}</option>
+                                    <option @if ($employee->country_id == $item->id) selected @endif data-mobile="{{ $employee->mobile }}" data-tokens="{{ $item->iso3 }}" data-iso="{{ $item->iso }}" data-phonecode="{{ $item->phonecode }}" data-content="<span
+                                    class='flag-icon flag-icon-{{ strtolower($item->iso) }} flag-icon-squared'></span>
+                                {{ $item->nicename }}" value="{{ $item->id }}">{{ $item->nicename }}</option>
                             @endforeach
                         </x-forms.select>
                     </div>
@@ -191,26 +191,60 @@ $addDepartmentPermission = user()->permission('add_department');
                     </div>
 
                     @if (
-                    ((in_array('admin', $userRoles) && in_array('admin', user_roles()))
-                    || (!in_array('admin', $userRoles)))
-                    && $employee->id != user()->id
-                    && $changeEmployeeRolePermission == 'all'
-                    )
-                        <div class="col-md-4">
-                            <x-forms.select fieldId="role" :fieldLabel="__('app.role')" fieldName="role">
-                                @foreach ($roles as $role)
-                                    <option
-                                    @if (
-                                        (in_array($role->name, $userRoles) && $role->name == 'admin')
-                                        || (in_array($role->name, $userRoles) && !in_array('admin', $userRoles))
-                                    )
-                                     selected
-                                    @endif
-                                    value="{{ $role->id }}">{{ $role->display_name }}</option>
-                                @endforeach
-                            </x-forms.select>
-                        </div>
+                            ((in_array('admin', $userRoles) && in_array('admin', user_roles()))
+                                || (!in_array('admin', $userRoles)))
+                            && $employee->id != user()->id
+                            && $changeEmployeeRolePermission == 'all'
+                        )
+                                <div class="col-md-4">
+                                    <x-forms.select fieldId="role" :fieldLabel="__('app.role')" fieldName="role">
+                                        @foreach ($roles as $role)
+                                            <option
+                                            @if (
+                                                    (in_array($role->name, $userRoles) && $role->name == 'admin')
+                                                    || (in_array($role->name, $userRoles) && !in_array('admin', $userRoles))
+                                                )
+                                                     selected
+                                            @endif
+                                            value="{{ $role->id }}">{{ $role->display_name }}</option>
+                                        @endforeach
+                                    </x-forms.select>
+                                </div>
                     @endif
+                    
+                                        <div class="col-lg-3 col-md-6">
+                        <x-forms.text fieldId="duty_time" :fieldLabel="__('Duty Time')" fieldName="duty_time"
+                            fieldRequired="true" :fieldPlaceholder="__('Total duty hours')">
+                        </x-forms.text>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <x-forms.select fieldId="check_in_time" :fieldLabel="__('Check In Time')" fieldName="check_in_time"
+                            fieldRequired="true" :fieldPlaceholder="__('Time To Check In')">
+
+                            @for ($i = 1; $i <= 23; $i++)
+                                @php
+                                    $timeValue = sprintf('%02d:00:00', $i);
+                                    $displayTime = $i . ':00';
+                                @endphp
+                                <option value="{{ $timeValue }}">{{ $displayTime }}</option>
+                            @endfor
+
+                        </x-forms.select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <x-forms.select fieldId="check_out_time" :fieldLabel="__('Check Out Time')" fieldName="check_out_time"
+                            fieldRequired="true" :fieldPlaceholder="__('Time To Check Out')">
+
+                            @for ($i = 1; $i <= 23; $i++)
+                                @php
+                                    $timeValue = sprintf('%02d:00:00', $i);
+                                    $displayTime = $i . ':00';
+                                @endphp
+                                <option value="{{ $timeValue }}">{{ $displayTime }}</option>
+                            @endfor
+
+                        </x-forms.select>
+                    </div>
 
                     <div class="col-md-12">
                         <div class="form-group my-3">
@@ -548,7 +582,7 @@ $addDepartmentPermission = user()->permission('add_department');
         datepicker('#joining_date', {
             position: 'bl',
             @if (!is_null($employee->employeeDetail->joining_date))
-            dateSelected: new Date("{{ str_replace('-', '/', $employee->employeeDetail->joining_date) }}"),
+                dateSelected: new Date("{{ str_replace('-', '/', $employee->employeeDetail->joining_date) }}"),
             @endif
             ...datepickerConfig
         });
@@ -557,7 +591,7 @@ $addDepartmentPermission = user()->permission('add_department');
             position: 'bl',
             maxDate: new Date(),
             @if (!is_null($employee->employeeDetail->date_of_birth))
-            dateSelected: new Date("{{ str_replace('-', '/', $employee->employeeDetail->date_of_birth) }}"),
+                dateSelected: new Date("{{ str_replace('-', '/', $employee->employeeDetail->date_of_birth) }}"),
             @endif
             ...datepickerConfig
         });
@@ -725,25 +759,25 @@ $addDepartmentPermission = user()->permission('add_department');
         });
 
         @if (function_exists('sms_setting') && sms_setting()->telegram_status)
-        var clipboard = new ClipboardJS('.btn-copy');
+            var clipboard = new ClipboardJS('.btn-copy');
 
-        clipboard.on('success', function(e) {
-            Swal.fire({
-                icon: 'success',
-                text: '@lang("app.urlCopied")',
-                toast: true,
-                position: 'top-end',
-                timer: 3000,
-                timerProgressBar: true,
-                showConfirmButton: false,
-                customClass: {
-                    confirmButton: 'btn btn-primary',
-                },
-                showClass: {
-                    popup: 'swal2-noanimation',
-                    backdrop: 'swal2-noanimation'
-                },
-            })
-        });
-    @endif
+            clipboard.on('success', function(e) {
+                Swal.fire({
+                    icon: 'success',
+                    text: '@lang("app.urlCopied")',
+                    toast: true,
+                    position: 'top-end',
+                    timer: 3000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    customClass: {
+                        confirmButton: 'btn btn-primary',
+                    },
+                    showClass: {
+                        popup: 'swal2-noanimation',
+                        backdrop: 'swal2-noanimation'
+                    },
+                })
+            });
+        @endif
 </script>
