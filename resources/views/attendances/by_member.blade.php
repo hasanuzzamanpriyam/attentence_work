@@ -6,6 +6,23 @@
             width: 10%;
         }
 
+        #attendance-footer {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        .attendance-summary-row td {
+            border-top: 2px solid #e9ecef;
+            background-color: #f8f9fa;
+        }
+
+        .attendance-summary-row td,
+        .attendance-summary-row td strong,
+        .attendance-summary-row td span {
+            color: #000 !important;
+            font-weight: bold !important;
+        }
     </style>
 @endpush
 
@@ -15,7 +32,8 @@
         <div class="select-box d-flex py-2 px-lg-2 px-md-2 px-0 border-right-grey border-right-grey-sm-0">
             <p class="mb-0 pr-2 f-14 text-dark-grey d-flex align-items-center">@lang('app.employee')</p>
             <div class="select-status">
-                <select class="form-control select-picker" name="user_id" id="user_id" data-live-search="true" data-size="8">
+                <select class="form-control select-picker" name="user_id" id="user_id" data-live-search="true"
+                    data-size="8">
                     @foreach ($employees as $item)
                         <x-user-option :user="$item" />
                     @endforeach
@@ -27,7 +45,7 @@
             <p class="mb-0 pr-2 f-14 text-dark-grey d-flex align-items-center">@lang('app.month')</p>
             <div class="select-status">
                 <select class="form-control select-picker" name="month" id="month" data-live-search="true" data-size="8">
-                    <x-forms.months :selectedMonth="$month" fieldRequired="true"/>
+                    <x-forms.months :selectedMonth="$month" fieldRequired="true" />
                 </select>
             </div>
         </div>
@@ -57,7 +75,7 @@
 @endsection
 
 @php
-$addAttendancePermission = user()->permission('add_attendance');
+    $addAttendancePermission = user()->permission('add_attendance');
 @endphp
 
 @section('content')
@@ -82,8 +100,8 @@ $addAttendancePermission = user()->permission('add_attendance');
                 @endif
 
                 @if ($addAttendancePermission == 'all' || $addAttendancePermission == 'added')
-                    <x-forms.link-secondary :link="route('attendances.import')" class="mr-3 openRightModal float-left d-none d-lg-block"
-                        icon="file-upload">
+                    <x-forms.link-secondary :link="route('attendances.import')"
+                        class="mr-3 openRightModal float-left d-none d-lg-block" icon="file-upload">
                         @lang('app.importExcel')
                     </x-forms.link-secondary>
                 @endif
@@ -101,8 +119,8 @@ $addAttendancePermission = user()->permission('add_attendance');
                     data-original-title="@lang('modules.attendance.attendanceByHour')"><i class="fa fa-clock"></i></a>
 
                 @if (attendance_setting()->save_current_location)
-                    <a href="{{ route('attendances.by_map_location') }}" class="btn btn-secondary f-14"
-                        data-toggle="tooltip" data-original-title="@lang('modules.attendance.attendanceByLocation')"><i
+                    <a href="{{ route('attendances.by_map_location') }}" class="btn btn-secondary f-14" data-toggle="tooltip"
+                        data-original-title="@lang('modules.attendance.attendanceByLocation')"><i
                             class="fa fa-map-marked-alt"></i></a>
                 @endif
 
@@ -158,6 +176,16 @@ $addAttendancePermission = user()->permission('add_attendance');
                         </thead>
                         <tbody id="attendance-data">
                         </tbody>
+                        <tfoot id="attendance-footer">
+                            <tr class="attendance-summary-row">
+                                <td colspan="2"><strong>@lang('Total Days'):</strong> <span id="totalDays">0</span></td>
+                                <td colspan="2"><strong>@lang('Working Days'):</strong> <span
+                                        id="totalWorkingDaysFooter">0</span>
+                                </td>
+                                <td colspan="2"><strong>@lang('Total Work Time'):</strong> <span id="totalWorkTimeFooter">0h
+                                        0m</span></td>
+                            </tr>
+                        </tfoot>
                     </table>
 
                 </div>
@@ -174,7 +202,7 @@ $addAttendancePermission = user()->permission('add_attendance');
     <script>
         $('#user_id, #department, #month, #year, #late')
             .on('change',
-                function() {
+                function () {
                     if ($('#user_id').val() != "all") {
                         $('#reset-filters').removeClass('d-none');
                         showTable();
@@ -196,7 +224,7 @@ $addAttendancePermission = user()->permission('add_attendance');
                     }
                 });
 
-        $('#reset-filters').click(function() {
+        $('#reset-filters').click(function () {
             $('#filter-form')[0].reset();
             $('.filter-box .select-picker').selectpicker("refresh");
             $('#reset-filters').addClass('d-none');
@@ -227,7 +255,7 @@ $addAttendancePermission = user()->permission('add_attendance');
                 url: url,
                 blockUI: true,
                 container: '.content-wrapper',
-                success: function(response) {
+                success: function (response) {
                     $('#attendance-data').html(response.data);
                     $('#daysPresent').html(response.daysPresent);
                     $('#daysLate').html(response.daysLate);
@@ -235,11 +263,15 @@ $addAttendancePermission = user()->permission('add_attendance');
                     $('#totalWorkingDays').html(response.totalWorkingDays);
                     $('#absentDays').html(response.absentDays);
                     $('#holidayDays').html(response.holidays);
+
+                    $('#totalDays').html(response.daysInMonth);
+                    $('#totalWorkingDaysFooter').html(response.daysPresent);
+                    $('#totalWorkTimeFooter').html(response.totalWorkTime);
                 }
             });
         }
         @if (canDataTableExport())
-            $('#export-bymember').click(function() {
+            $('#export-bymember').click(function () {
                 var year = $('#year').val();
                 var month = $('#month').val();
 
@@ -247,10 +279,10 @@ $addAttendancePermission = user()->permission('add_attendance');
 
                 var url = "{{ route('attendances.export_attendance', [':year', ':month', ':userId']) }}";
                 url = url.replace(':year', year).replace(':month', month).replace(':userId', userId);
-                window.location.href=url;
+                window.location.href = url;
             });
         @endif
-        $('#attendance-data').on('click', '.view-attendance', function() {
+        $('#attendance-data').on('click', '.view-attendance', function () {
             var attendanceID = $(this).data('attendance-id');
             var url = "{{ route('attendances.show', ':attendanceID') }}";
             url = url.replace(':attendanceID', attendanceID);
@@ -259,7 +291,7 @@ $addAttendancePermission = user()->permission('add_attendance');
             $.ajaxModal(MODAL_XL, url);
         });
 
-        $('#attendance-data').on('click', '.edit-attendance', function(event) {
+        $('#attendance-data').on('click', '.edit-attendance', function (event) {
             var attendanceDate = $(this).data('attendance-date');
             var userData = $(this).closest('tr').children('td:first');
             var userID = $(this).data('user-id');
