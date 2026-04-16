@@ -73,7 +73,6 @@
                           data-original-title="{{__('messages.showHidePurchaseCode')}}">
                        <i class="icon far fa-eye-slash fa-fw cursor-pointer"></i>
                     </span>
-                    <a href="{{route('verify-purchase')}}">Change Purchase Code</a>
                 </td>
             </tr>
             @if(!is_null($envatoUpdateCompanySetting?->purchased_on))

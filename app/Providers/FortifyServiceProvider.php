@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Laravel\Fortify\Fortify;
 use App\Models\GlobalSetting;
 use Laravel\Fortify\Features;
-use Froiden\Envato\Traits\AppBoot;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Hash;
 use App\Actions\Fortify\CreateNewUser;
@@ -27,8 +26,20 @@ use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 
 class FortifyServiceProvider extends ServiceProvider
 {
+    private function showInstall()
+    {
+        try {
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+        } catch (\Exception $e) {
+            echo view('vendor.froiden-envato.install_message');
+            exit(1);
+        }
+    }
 
-    use AppBoot;
+    private function isLegal(): bool
+    {
+        return true;
+    }
 
     /**
      * Register any application services.
@@ -130,10 +141,6 @@ class FortifyServiceProvider extends ServiceProvider
             $globalSetting = global_setting();
             // Is worksuite
             $company = Company::withCount('users')->first();
-
-            if (!$this->isLegal()) {
-                return redirect('verify-purchase');
-            }
 
             if ($globalSetting) {
                 App::setLocale($globalSetting->locale);
